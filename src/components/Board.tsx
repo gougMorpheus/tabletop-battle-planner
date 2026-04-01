@@ -1,7 +1,18 @@
-﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Group, Layer, Line, Rect, Stage } from "react-konva";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Circle,
+  Group,
+  Label,
+  Layer,
+  Line,
+  Rect,
+  Stage,
+  Tag,
+  Text,
+} from "react-konva";
 import Konva from "konva";
 import { useBoardStore } from "../store/boardStore";
+import { useUnitsStore } from "../store/unitsStore";
 
 const PX_PER_INCH = 20;
 const MIN_SCALE = 0.25;
@@ -26,6 +37,12 @@ const getTouchCenter = (touches: TouchList) => {
   };
 };
 
+type DragState = {
+  unitId: string;
+  origin: { x: number; y: number };
+  current: { x: number; y: number };
+};
+
 const Board = () => {
   const widthIn = useBoardStore((state) => state.widthIn);
   const heightIn = useBoardStore((state) => state.heightIn);
@@ -34,6 +51,11 @@ const Board = () => {
   const showGrid = useBoardStore((state) => state.showGrid);
   const setView = useBoardStore((state) => state.setView);
   const setPosition = useBoardStore((state) => state.setPosition);
+
+  const units = useUnitsStore((state) => state.units);
+  const selectedUnitId = useUnitsStore((state) => state.selectedUnitId);
+  const setSelectedUnitId = useUnitsStore((state) => state.setSelectedUnitId);
+  const setUnitPosition = useUnitsStore((state) => state.setUnitPosition);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -44,6 +66,7 @@ const Board = () => {
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [isPinching, setIsPinching] = useState(false);
+  const [dragState, setDragState] = useState<DragState | null>(null);
 
   const boardWidthPx = widthIn * PX_PER_INCH;
   const boardHeightPx = heightIn * PX_PER_INCH;
@@ -227,6 +250,13 @@ const Board = () => {
     return lines;
   }, [boardHeightPx, boardWidthPx, heightIn, showGrid, widthIn]);
 
+  const dragDistance = dragState
+    ? Math.hypot(
+        dragState.current.x - dragState.origin.x,
+        dragState.current.y - dragState.origin.y
+      )
+    : 0;
+
   return (
     <div className="board-canvas" ref={containerRef}>
       <Stage
@@ -258,6 +288,110 @@ const Board = () => {
             />
             {gridLines}
           </Group>
+          {dragState && (
+            <Group>
+              <Line
+                points={[
+                  dragState.origin.x * PX_PER_INCH,
+                  dragState.origin.y * PX_PER_INCH,
+                  dragState.current.x * PX_PER_INCH,
+                  dragState.current.y * PX_PER_INCH,
+                ]}
+                stroke="#f6c35c"
+                strokeWidth={3}
+                dash={[10, 6]}
+              />
+              <Label
+                x={
+                  ((dragState.origin.x + dragState.current.x) / 2) *
+                  PX_PER_INCH
+                }
+                y={
+                  ((dragState.origin.y + dragState.current.y) / 2) *
+                  PX_PER_INCH
+                }
+              >
+                <Tag
+                  fill="#0f1618"
+                  cornerRadius={6}
+                  stroke="#f6c35c"
+                  strokeWidth={1}
+                />
+                <Text
+                  text={`${dragDistance.toFixed(1)}"`}
+                  fill="#f6c35c"
+                  fontSize={16}
+                  padding={6}
+                  fontStyle="bold"
+                />
+              </Label>
+            </Group>
+          )}
+          {units.map((unit) => {
+            const radiusPx = (unit.iconDiameterInches / 2) * PX_PER_INCH;
+            return (
+              <Group
+                key={unit.id}
+                x={unit.x * PX_PER_INCH}
+                y={unit.y * PX_PER_INCH}
+                draggable
+                onTap={(event) => {
+                  event.cancelBubble = true;
+                  setSelectedUnitId(unit.id);
+                }}
+                onDragStart={(event) => {
+                  event.cancelBubble = true;
+                  setSelectedUnitId(unit.id);
+                  setDragState({
+                    unitId: unit.id,
+                    origin: { x: unit.x, y: unit.y },
+                    current: { x: unit.x, y: unit.y },
+                  });
+                }}
+                onDragMove={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  const next = {
+                    x: node.x() / PX_PER_INCH,
+                    y: node.y() / PX_PER_INCH,
+                  };
+                  setDragState((state) =>
+                    state && state.unitId === unit.id
+                      ? { ...state, current: next }
+                      : state
+                  );
+                }}
+                onDragEnd={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  const nextX = node.x() / PX_PER_INCH;
+                  const nextY = node.y() / PX_PER_INCH;
+                  setUnitPosition(unit.id, nextX, nextY);
+                  setDragState(null);
+                }}
+              >
+                <Circle
+                  radius={radiusPx}
+                  fill={unit.color}
+                  stroke={unit.id === selectedUnitId ? "#f6c35c" : "#0f1618"}
+                  strokeWidth={unit.id === selectedUnitId ? 4 : 2}
+                  hitStrokeWidth={12}
+                />
+                <Text
+                  text={unit.initials}
+                  fill="#0f1618"
+                  fontSize={Math.max(14, radiusPx * 0.6)}
+                  fontStyle="700"
+                  align="center"
+                  verticalAlign="middle"
+                  width={radiusPx * 2}
+                  height={radiusPx * 2}
+                  offsetX={radiusPx}
+                  offsetY={radiusPx}
+                />
+              </Group>
+            );
+          })}
         </Layer>
       </Stage>
     </div>
