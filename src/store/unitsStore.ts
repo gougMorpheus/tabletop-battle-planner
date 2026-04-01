@@ -11,6 +11,7 @@ export type Unit = {
   currentModelWounds: number[];
   iconDiameterInches: number;
   color: string;
+  ranges: number[];
 };
 
 type UnitDraft = Partial<Omit<Unit, "id">> & { x?: number; y?: number };
@@ -23,6 +24,8 @@ type UnitsState = {
   deleteUnit: (unitId: string) => void;
   setSelectedUnitId: (unitId: string | null) => void;
   setUnitPosition: (unitId: string, x: number, y: number) => void;
+  addRange: (unitId: string, rangeInches: number) => void;
+  removeRange: (unitId: string, rangeIndex: number) => void;
 };
 
 const buildInitials = (name: string) => {
@@ -53,6 +56,7 @@ const buildDefaultUnit = (index: number, draft?: UnitDraft): Unit => {
     currentModelWounds,
     iconDiameterInches: draft?.iconDiameterInches ?? 1.6,
     color: draft?.color ?? "#d46b41",
+    ranges: [],
   };
 };
 
@@ -91,6 +95,25 @@ export const useUnitsStore = create<UnitsState>((set, get) => ({
     set((state) => ({
       units: state.units.map((unit) =>
         unit.id === unitId ? { ...unit, x, y } : unit
+      ),
+    })),
+  addRange: (unitId, rangeInches) =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.id === unitId
+          ? { ...unit, ranges: [...unit.ranges, rangeInches] }
+          : unit
+      ),
+    })),
+  removeRange: (unitId, rangeIndex) =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.id === unitId
+          ? {
+              ...unit,
+              ranges: unit.ranges.filter((_, index) => index !== rangeIndex),
+            }
+          : unit
       ),
     })),
 }));

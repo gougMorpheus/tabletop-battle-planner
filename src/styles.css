@@ -89,6 +89,59 @@ body {
   z-index: 10;
 }
 
+.fab__group {
+  backdrop-filter: blur(6px);
+  background: rgba(249, 246, 241, 0.92);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 22, 24, 0.2);
+  padding: 10px 12px;
+}
+
+.fab__label {
+  color: #4a5a5c;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.fab__row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fab__row--stack {
+  align-items: center;
+  margin-top: 8px;
+}
+
+.fab__input {
+  border: 1px solid #d0c7bb;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  min-height: 40px;
+  padding: 0 12px;
+  width: 120px;
+}
+
+.fab__chip {
+  background: #1f2d2f;
+  border: none;
+  border-radius: 999px;
+  color: #f9f6f1;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.fab__chip:active {
+  transform: scale(0.97);
+}
+
 .fab__button {
   background: #f9f6f1;
   border: none;
@@ -114,4 +167,22 @@ body {
 .fab__button--danger {
   background: #b83b3b;
   color: #f9f6f1;
+}
+
+.fab__pill {
+  align-items: center;
+  background: #eef0eb;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.fab__pill-remove {
+  background: transparent;
+  border: none;
+  color: #b83b3b;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
 }

@@ -13,11 +13,13 @@ import {
 import Konva from "konva";
 import { useBoardStore } from "../store/boardStore";
 import { useUnitsStore } from "../store/unitsStore";
+import { useMeasurementStore } from "../store/measurementStore";
 
 const PX_PER_INCH = 20;
 const MIN_SCALE = 0.25;
 const MAX_SCALE = 3;
 const DOUBLE_TAP_DELAY_MS = 300;
+const SNAP_DISTANCE_IN = 0.75;
 
 const clampScale = (scale: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
@@ -56,6 +58,12 @@ const Board = () => {
   const selectedUnitId = useUnitsStore((state) => state.selectedUnitId);
   const setSelectedUnitId = useUnitsStore((state) => state.setSelectedUnitId);
   const setUnitPosition = useUnitsStore((state) => state.setUnitPosition);
+  const measurementActive = useMeasurementStore((state) => state.isActive);
+  const pointA = useMeasurementStore((state) => state.pointA);
+  const pointB = useMeasurementStore((state) => state.pointB);
+  const snappedUnitId = useMeasurementStore((state) => state.snappedUnitId);
+  const setPointA = useMeasurementStore((state) => state.setPointA);
+  const setPointB = useMeasurementStore((state) => state.setPointB);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -66,6 +74,7 @@ const Board = () => {
 
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [isPinching, setIsPinching] = useState(false);
+  const [isHandleDragging, setIsHandleDragging] = useState(false);
   const [dragState, setDragState] = useState<DragState | null>(null);
 
   const boardWidthPx = widthIn * PX_PER_INCH;
@@ -250,12 +259,66 @@ const Board = () => {
     return lines;
   }, [boardHeightPx, boardWidthPx, heightIn, showGrid, widthIn]);
 
+  const findSnapUnit = (point: { x: number; y: number }) => {
+    let closest: { unit: (typeof units)[number]; distance: number } | null =
+      null;
+    units.forEach((unit) => {
+      const radius = unit.iconDiameterInches / 2;
+      const distance = Math.hypot(point.x - unit.x, point.y - unit.y);
+      const threshold = radius + SNAP_DISTANCE_IN;
+      if (distance <= threshold) {
+        if (!closest || distance < closest.distance) {
+          closest = { unit, distance };
+        }
+      }
+    });
+    return closest?.unit ?? null;
+  };
+
   const dragDistance = dragState
     ? Math.hypot(
         dragState.current.x - dragState.origin.x,
         dragState.current.y - dragState.origin.y
       )
     : 0;
+
+  const snappedUnit = snappedUnitId
+    ? units.find((unit) => unit.id === snappedUnitId) ?? null
+    : null;
+
+  const measurementStart = (() => {
+    if (!measurementActive || !pointA || !pointB) {
+      return null;
+    }
+    if (!snappedUnit) {
+      return pointA;
+    }
+    const dx = pointB.x - snappedUnit.x;
+    const dy = pointB.y - snappedUnit.y;
+    const length = Math.hypot(dx, dy);
+    const radius = snappedUnit.iconDiameterInches / 2;
+    if (length === 0) {
+      return { x: snappedUnit.x, y: snappedUnit.y };
+    }
+    return {
+      x: snappedUnit.x + (dx / length) * radius,
+      y: snappedUnit.y + (dy / length) * radius,
+    };
+  })();
+
+  const measurementDistance = (() => {
+    if (!measurementActive || !pointA || !pointB) {
+      return 0;
+    }
+    if (snappedUnit) {
+      const radius = snappedUnit.iconDiameterInches / 2;
+      return Math.max(
+        0,
+        Math.hypot(pointB.x - snappedUnit.x, pointB.y - snappedUnit.y) - radius
+      );
+    }
+    return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
+  })();
 
   return (
     <div className="board-canvas" ref={containerRef}>
@@ -267,7 +330,7 @@ const Board = () => {
         y={position.y}
         scaleX={scale}
         scaleY={scale}
-        draggable={!isPinching}
+        draggable={!isPinching && !isHandleDragging}
         onDragMove={handleDragMove}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -288,6 +351,124 @@ const Board = () => {
             />
             {gridLines}
           </Group>
+          {units.map((unit) =>
+            unit.ranges.map((range, index) => (
+              <Circle
+                key={`${unit.id}-range-${index}`}
+                x={unit.x * PX_PER_INCH}
+                y={unit.y * PX_PER_INCH}
+                radius={range * PX_PER_INCH}
+                stroke="#4aa7a1"
+                strokeWidth={2}
+                dash={[10, 8]}
+                listening={false}
+              />
+            ))
+          )}
+          {measurementActive && pointA && pointB && measurementStart && (
+            <Group>
+              <Line
+                points={[
+                  measurementStart.x * PX_PER_INCH,
+                  measurementStart.y * PX_PER_INCH,
+                  pointB.x * PX_PER_INCH,
+                  pointB.y * PX_PER_INCH,
+                ]}
+                stroke="#7bd389"
+                strokeWidth={3}
+              />
+              <Circle
+                x={pointA.x * PX_PER_INCH}
+                y={pointA.y * PX_PER_INCH}
+                radius={6}
+                fill="#7bd389"
+                stroke="#0f1618"
+                strokeWidth={2}
+                draggable
+                onDragStart={(event) => {
+                  event.cancelBubble = true;
+                  setIsHandleDragging(true);
+                }}
+                onDragMove={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  const next = {
+                    x: node.x() / PX_PER_INCH,
+                    y: node.y() / PX_PER_INCH,
+                  };
+                  const snap = findSnapUnit(next);
+                  if (snap) {
+                    setPointA({ x: snap.x, y: snap.y }, snap.id);
+                  } else {
+                    setPointA(next, null);
+                  }
+                }}
+                onDragEnd={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  const next = {
+                    x: node.x() / PX_PER_INCH,
+                    y: node.y() / PX_PER_INCH,
+                  };
+                  const snap = findSnapUnit(next);
+                  if (snap) {
+                    setPointA({ x: snap.x, y: snap.y }, snap.id);
+                  } else {
+                    setPointA(next, null);
+                  }
+                  setIsHandleDragging(false);
+                }}
+              />
+              <Label
+                x={((measurementStart.x + pointB.x) / 2) * PX_PER_INCH}
+                y={((measurementStart.y + pointB.y) / 2) * PX_PER_INCH}
+              >
+                <Tag
+                  fill="#0f1618"
+                  cornerRadius={6}
+                  stroke="#7bd389"
+                  strokeWidth={1}
+                />
+                <Text
+                  text={`${measurementDistance.toFixed(1)}"`}
+                  fill="#7bd389"
+                  fontSize={16}
+                  padding={6}
+                  fontStyle="bold"
+                />
+              </Label>
+              <Circle
+                x={pointB.x * PX_PER_INCH}
+                y={pointB.y * PX_PER_INCH}
+                radius={6}
+                fill="#7bd389"
+                stroke="#0f1618"
+                strokeWidth={2}
+                draggable
+                onDragStart={(event) => {
+                  event.cancelBubble = true;
+                  setIsHandleDragging(true);
+                }}
+                onDragMove={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  setPointB({
+                    x: node.x() / PX_PER_INCH,
+                    y: node.y() / PX_PER_INCH,
+                  });
+                }}
+                onDragEnd={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  setPointB({
+                    x: node.x() / PX_PER_INCH,
+                    y: node.y() / PX_PER_INCH,
+                  });
+                  setIsHandleDragging(false);
+                }}
+              />
+            </Group>
+          )}
           {dragState && (
             <Group>
               <Line
