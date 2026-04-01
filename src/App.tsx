@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Board from "./components/Board";
 import { useBoardStore } from "./store/boardStore";
 import { Unit, useUnitsStore } from "./store/unitsStore";
@@ -11,6 +11,12 @@ const App = () => {
   const toggleGrid = useBoardStore((state) => state.toggleGrid);
   const boardWidthIn = useBoardStore((state) => state.widthIn);
   const boardHeightIn = useBoardStore((state) => state.heightIn);
+  const backgroundImageUrl = useBoardStore(
+    (state) => state.backgroundImageUrl
+  );
+  const setBackgroundImageUrl = useBoardStore(
+    (state) => state.setBackgroundImageUrl
+  );
   const addUnit = useUnitsStore((state) => state.addUnit);
   const duplicateUnit = useUnitsStore((state) => state.duplicateUnit);
   const deleteUnit = useUnitsStore((state) => state.deleteUnit);
@@ -52,6 +58,8 @@ const App = () => {
   const [unitNameInput, setUnitNameInput] = useState("");
   const [unitInitialsInput, setUnitInitialsInput] = useState("");
   const [unitColorInput, setUnitColorInput] = useState("");
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const lastImageUrlRef = useRef<string | null>(null);
 
   const hasPlannedMoves = units.some(
     (unit) => unit.plannedX !== undefined || unit.plannedY !== undefined
@@ -118,6 +126,32 @@ const App = () => {
       x: boardWidthIn / 2,
       y: boardHeightIn / 2,
     });
+  };
+
+  const handleSelectBackground = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleBackgroundChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (lastImageUrlRef.current) {
+      URL.revokeObjectURL(lastImageUrlRef.current);
+    }
+    lastImageUrlRef.current = url;
+    setBackgroundImageUrl(url);
+    event.target.value = "";
+  };
+
+  const handleClearBackground = () => {
+    if (lastImageUrlRef.current) {
+      URL.revokeObjectURL(lastImageUrlRef.current);
+      lastImageUrlRef.current = null;
+    }
+    setBackgroundImageUrl(null);
   };
 
   const handleInspectorToggle = () => {
@@ -415,6 +449,30 @@ const App = () => {
               </div>
             </div>
           )}
+        </div>
+        <div className="fab__group">
+          <div className="fab__label">Board</div>
+          <input
+            ref={imageInputRef}
+            className="fab__hidden-input"
+            type="file"
+            accept="image/*"
+            onChange={handleBackgroundChange}
+          />
+          <div className="fab__row fab__row--stack">
+            <button className="fab__chip" type="button" onClick={handleSelectBackground}>
+              {backgroundImageUrl ? "Replace Image" : "Add Background"}
+            </button>
+            {backgroundImageUrl && (
+              <button
+                className="fab__chip fab__chip--danger"
+                type="button"
+                onClick={handleClearBackground}
+              >
+                Remove Image
+              </button>
+            )}
+          </div>
         </div>
         <button className="fab__button" type="button" onClick={handleAddUnit}>
           Add Unit

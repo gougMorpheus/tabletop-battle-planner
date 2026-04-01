@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Circle,
   Group,
+  Image as KonvaImage,
   Label,
   Layer,
   Line,
@@ -90,6 +91,9 @@ const Board = () => {
   const scale = useBoardStore((state) => state.scale);
   const position = useBoardStore((state) => state.position);
   const showGrid = useBoardStore((state) => state.showGrid);
+  const backgroundImageUrl = useBoardStore(
+    (state) => state.backgroundImageUrl
+  );
   const setView = useBoardStore((state) => state.setView);
   const setPosition = useBoardStore((state) => state.setPosition);
 
@@ -121,6 +125,8 @@ const Board = () => {
   const [isHandleDragging, setIsHandleDragging] = useState(false);
   const [isObjectDragging, setIsObjectDragging] = useState(false);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [backgroundImage, setBackgroundImage] =
+    useState<HTMLImageElement | null>(null);
 
   const boardWidthPx = widthIn * PX_PER_INCH;
   const boardHeightPx = heightIn * PX_PER_INCH;
@@ -167,6 +173,16 @@ const Board = () => {
     setView(nextScale, nextPosition);
     initializedRef.current = true;
   }, [boardHeightPx, boardWidthPx, containerSize, setView]);
+
+  useEffect(() => {
+    if (!backgroundImageUrl) {
+      setBackgroundImage(null);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => setBackgroundImage(img);
+    img.src = backgroundImageUrl;
+  }, [backgroundImageUrl]);
 
   const zoomAt = (point: { x: number; y: number }, nextScale: number) => {
     const clamped = clampScale(nextScale);
@@ -374,6 +390,25 @@ const Board = () => {
     return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
   })();
 
+  const backgroundImageStyle = (() => {
+    if (!backgroundImage) {
+      return null;
+    }
+    const scale = Math.min(
+      boardWidthPx / backgroundImage.width,
+      boardHeightPx / backgroundImage.height
+    );
+    const width = backgroundImage.width * scale;
+    const height = backgroundImage.height * scale;
+    return {
+      image: backgroundImage,
+      x: (boardWidthPx - width) / 2,
+      y: (boardHeightPx - height) / 2,
+      width,
+      height,
+    };
+  })();
+
   const activeDistanceLabel = dragState
     ? `${dragDistance.toFixed(1)}"`
     : measurementActive && pointA && pointB
@@ -432,6 +467,16 @@ const Board = () => {
               onClick={() => clearSelection()}
               onTap={() => clearSelection()}
             />
+            {backgroundImageStyle && (
+              <KonvaImage
+                image={backgroundImageStyle.image}
+                x={backgroundImageStyle.x}
+                y={backgroundImageStyle.y}
+                width={backgroundImageStyle.width}
+                height={backgroundImageStyle.height}
+                listening={false}
+              />
+            )}
             {gridLines}
           </Group>
           {units.map((unit) => {
