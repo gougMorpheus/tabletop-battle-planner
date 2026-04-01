@@ -7,6 +7,13 @@ import { useTerrainStore } from "./store/terrainStore";
 import { useSelectionStore } from "./store/selectionStore";
 import { useDiceStore } from "./store/diceStore";
 import { useGameTrackerStore } from "./store/gameTrackerStore";
+import {
+  SceneRecord,
+  deleteScene,
+  listScenes,
+  saveScene,
+  updateSceneName,
+} from "./storage/sceneDb";
 
 const App = () => {
   const showGrid = useBoardStore((state) => state.showGrid);
@@ -19,6 +26,7 @@ const App = () => {
   const setBackgroundImageUrl = useBoardStore(
     (state) => state.setBackgroundImageUrl
   );
+  const setBoardConfig = useBoardStore((state) => state.setBoardConfig);
   const addUnit = useUnitsStore((state) => state.addUnit);
   const duplicateUnit = useUnitsStore((state) => state.duplicateUnit);
   const deleteUnit = useUnitsStore((state) => state.deleteUnit);
@@ -26,6 +34,7 @@ const App = () => {
   const addRange = useUnitsStore((state) => state.addRange);
   const removeRange = useUnitsStore((state) => state.removeRange);
   const updateUnit = useUnitsStore((state) => state.updateUnit);
+  const setUnits = useUnitsStore((state) => state.setUnits);
   const commitPlannedMoves = useUnitsStore(
     (state) => state.commitPlannedMoves
   );
@@ -51,6 +60,7 @@ const App = () => {
   const duplicateTerrain = useTerrainStore((state) => state.duplicateTerrain);
   const deleteTerrain = useTerrainStore((state) => state.deleteTerrain);
   const updateTerrain = useTerrainStore((state) => state.updateTerrain);
+  const setTerrains = useTerrainStore((state) => state.setTerrains);
   const selection = useSelectionStore((state) => state.selection);
   const clearSelection = useSelectionStore((state) => state.clearSelection);
 
@@ -75,6 +85,10 @@ const App = () => {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const lastImageUrlRef = useRef<string | null>(null);
   const [isDiceOpen, setIsDiceOpen] = useState(false);
+  const [isScenesOpen, setIsScenesOpen] = useState(false);
+  const [sceneNameInput, setSceneNameInput] = useState("");
+  const [scenes, setScenes] = useState<SceneRecord[]>([]);
+  const [loadingScenes, setLoadingScenes] = useState(false);
   const diceSections = useDiceStore((state) => state.sections);
   const setDiceCountInput = useDiceStore((state) => state.setCountInput);
   const setDiceTarget = useDiceStore((state) => state.setTarget);
@@ -92,6 +106,7 @@ const App = () => {
   const toggleActivePlayer = useGameTrackerStore(
     (state) => state.toggleActivePlayer
   );
+  const setTrackerState = useGameTrackerStore((state) => state.setTrackerState);
 
   const hasPlannedMoves = units.some(
     (unit) => unit.plannedX !== undefined || unit.plannedY !== undefined
@@ -191,6 +206,74 @@ const App = () => {
 
   const handleTrackerToggle = () => {
     setIsTrackerExpanded((open) => !open);
+  };
+
+  const refreshScenes = async () => {
+    setLoadingScenes(true);
+    const list = await listScenes();
+    setScenes(list);
+    setLoadingScenes(false);
+  };
+
+  const handleOpenScenes = () => {
+    setIsScenesOpen(true);
+    refreshScenes();
+  };
+
+  const handleSaveScene = async () => {
+    const name = sceneNameInput.trim() || "Untitled Scene";
+    const boardState = useBoardStore.getState();
+    const unitState = useUnitsStore.getState();
+    const terrainState = useTerrainStore.getState();
+    const trackerState = useGameTrackerStore.getState();
+    await saveScene(name, {
+      board: {
+        widthIn: boardState.widthIn,
+        heightIn: boardState.heightIn,
+        scale: boardState.scale,
+        position: boardState.position,
+        showGrid: boardState.showGrid,
+        backgroundImageUrl: boardState.backgroundImageUrl,
+      },
+      units: unitState.units,
+      terrain: terrainState.terrains,
+      gameTracker: {
+        playerA: trackerState.playerA,
+        playerB: trackerState.playerB,
+        battleRound: trackerState.battleRound,
+        activePlayer: trackerState.activePlayer,
+        phase: trackerState.phase,
+      },
+    });
+    setSceneNameInput("");
+    refreshScenes();
+  };
+
+  const handleLoadScene = async (scene: SceneRecord) => {
+    setBoardConfig(scene.data.board);
+    setUnits(scene.data.units as Unit[]);
+    setTerrains(scene.data.terrain as typeof terrains);
+    setTrackerState(scene.data.gameTracker as any);
+    clearSelection();
+    setIsInspectorOpen(false);
+    setIsScenesOpen(false);
+  };
+
+  const handleRenameScene = async (scene: SceneRecord) => {
+    const name = prompt("Rename scene", scene.name);
+    if (!name || name.trim().length === 0) {
+      return;
+    }
+    await updateSceneName(scene.id, name.trim());
+    refreshScenes();
+  };
+
+  const handleDeleteScene = async (scene: SceneRecord) => {
+    if (!confirm(`Delete scene "${scene.name}"?`)) {
+      return;
+    }
+    await deleteScene(scene.id);
+    refreshScenes();
   };
 
   const handleUnitUpdate = (updates: Partial<Unit>) => {
@@ -332,6 +415,13 @@ const App = () => {
           </button>
           <button className="tool-dock__button" type="button" onClick={() => setIsDiceOpen(true)}>
             Dice
+          </button>
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={handleOpenScenes}
+          >
+            Scenes
           </button>
           <button
             className="tool-dock__button tool-dock__button--ghost"
@@ -836,6 +926,76 @@ const App = () => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isScenesOpen && (
+        <div className="scenes">
+          <div className="scenes__modal">
+            <div className="scenes__header">
+              <div className="scenes__title">Scenes</div>
+              <button
+                className="scenes__button scenes__button--ghost"
+                type="button"
+                onClick={() => setIsScenesOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="scenes__content">
+              <div className="scenes__row">
+                <input
+                  className="scenes__input"
+                  type="text"
+                  placeholder="Scene name"
+                  value={sceneNameInput}
+                  onChange={(event) => setSceneNameInput(event.target.value)}
+                />
+                <button
+                  className="scenes__button"
+                  type="button"
+                  onClick={handleSaveScene}
+                >
+                  Save
+                </button>
+              </div>
+              {loadingScenes ? (
+                <div className="scenes__empty">Loading scenes…</div>
+              ) : scenes.length === 0 ? (
+                <div className="scenes__empty">No saved scenes yet.</div>
+              ) : (
+                <div className="scenes__list">
+                  {scenes.map((scene) => (
+                    <div key={scene.id} className="scenes__item">
+                      <div className="scenes__item-name">{scene.name}</div>
+                      <div className="scenes__item-actions">
+                        <button
+                          className="scenes__button"
+                          type="button"
+                          onClick={() => handleLoadScene(scene)}
+                        >
+                          Load
+                        </button>
+                        <button
+                          className="scenes__button scenes__button--ghost"
+                          type="button"
+                          onClick={() => handleRenameScene(scene)}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          className="scenes__button scenes__button--danger"
+                          type="button"
+                          onClick={() => handleDeleteScene(scene)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

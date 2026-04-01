@@ -18,6 +18,13 @@ type GameTrackerState = {
   nextPhase: () => void;
   prevPhase: () => void;
   toggleActivePlayer: () => void;
+  setTrackerState: (state: {
+    playerA: PlayerState;
+    playerB: PlayerState;
+    battleRound: number;
+    activePlayer: "A" | "B";
+    phase: Phase;
+  }) => void;
 };
 
 const phases: Phase[] = ["Command", "Movement", "Shooting", "Charge", "Fight"];
@@ -56,4 +63,12 @@ export const useGameTrackerStore = create<GameTrackerState>((set) => ({
     set((state) => ({
       activePlayer: state.activePlayer === "A" ? "B" : "A",
     })),
+  setTrackerState: (state) =>
+    set({
+      playerA: state.playerA,
+      playerB: state.playerB,
+      battleRound: state.battleRound,
+      activePlayer: state.activePlayer,
+      phase: state.phase,
+    }),
 }));

@@ -31,6 +31,7 @@ type TerrainState = {
   deleteTerrain: (terrainId: string) => void;
   setTerrainPosition: (terrainId: string, x: number, y: number) => void;
   updateTerrain: (terrainId: string, updates: Partial<Terrain>) => void;
+  setTerrains: (terrains: Terrain[]) => void;
 };
 
 const createDefaultTerrain = (draft: TerrainDraft): Terrain => {
@@ -107,4 +108,5 @@ export const useTerrainStore = create<TerrainState>((set) => ({
         terrain.id === terrainId ? { ...terrain, ...updates } : terrain
       ),
     })),
+  setTerrains: (terrains) => set({ terrains }),
 }));
