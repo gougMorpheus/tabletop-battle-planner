@@ -5,26 +5,76 @@ export type MeasurementPoint = {
   y: number;
 };
 
-type MeasurementState = {
-  isActive: boolean;
-  pointA: MeasurementPoint | null;
-  pointB: MeasurementPoint | null;
+export type Measurement = {
+  id: string;
+  pointA: MeasurementPoint;
+  pointB: MeasurementPoint;
   snappedUnitId: string | null;
+};
+
+type MeasurementState = {
+  measurements: Measurement[];
+  activeMeasurementId: string | null;
   startMeasurement: (pointA: MeasurementPoint, pointB: MeasurementPoint) => void;
-  stopMeasurement: () => void;
-  setPointA: (pointA: MeasurementPoint, snappedUnitId: string | null) => void;
-  setPointB: (pointB: MeasurementPoint) => void;
+  stopActiveMeasurement: () => void;
+  setActivePointA: (pointA: MeasurementPoint, snappedUnitId: string | null) => void;
+  setActivePointB: (pointB: MeasurementPoint) => void;
+  removeMeasurement: (measurementId: string) => void;
+  clearMeasurements: () => void;
 };
 
 export const useMeasurementStore = create<MeasurementState>((set) => ({
-  isActive: false,
-  pointA: null,
-  pointB: null,
-  snappedUnitId: null,
+  measurements: [],
+  activeMeasurementId: null,
   startMeasurement: (pointA, pointB) =>
-    set({ isActive: true, pointA, pointB, snappedUnitId: null }),
-  stopMeasurement: () =>
-    set({ isActive: false, pointA: null, pointB: null, snappedUnitId: null }),
-  setPointA: (pointA, snappedUnitId) => set({ pointA, snappedUnitId }),
-  setPointB: (pointB) => set({ pointB }),
+    set((state) => {
+      const measurement = {
+        id: crypto.randomUUID(),
+        pointA,
+        pointB,
+        snappedUnitId: null,
+      };
+      return {
+        measurements: [...state.measurements, measurement],
+        activeMeasurementId: measurement.id,
+      };
+    }),
+  stopActiveMeasurement: () => set({ activeMeasurementId: null }),
+  setActivePointA: (pointA, snappedUnitId) =>
+    set((state) => {
+      if (!state.activeMeasurementId) {
+        return state;
+      }
+      return {
+        measurements: state.measurements.map((measurement) =>
+          measurement.id === state.activeMeasurementId
+            ? { ...measurement, pointA, snappedUnitId }
+            : measurement
+        ),
+      };
+    }),
+  setActivePointB: (pointB) =>
+    set((state) => {
+      if (!state.activeMeasurementId) {
+        return state;
+      }
+      return {
+        measurements: state.measurements.map((measurement) =>
+          measurement.id === state.activeMeasurementId
+            ? { ...measurement, pointB }
+            : measurement
+        ),
+      };
+    }),
+  removeMeasurement: (measurementId) =>
+    set((state) => ({
+      measurements: state.measurements.filter(
+        (measurement) => measurement.id !== measurementId
+      ),
+      activeMeasurementId:
+        state.activeMeasurementId === measurementId
+          ? null
+          : state.activeMeasurementId,
+    })),
+  clearMeasurements: () => set({ measurements: [], activeMeasurementId: null }),
 }));

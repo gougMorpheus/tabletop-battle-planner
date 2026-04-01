@@ -28,11 +28,22 @@ const App = () => {
     (state) => state.commitPlannedMoves
   );
   const resetPlannedMoves = useUnitsStore((state) => state.resetPlannedMoves);
-  const measurementActive = useMeasurementStore((state) => state.isActive);
+  const measurements = useMeasurementStore((state) => state.measurements);
+  const activeMeasurementId = useMeasurementStore(
+    (state) => state.activeMeasurementId
+  );
   const startMeasurement = useMeasurementStore(
     (state) => state.startMeasurement
   );
-  const stopMeasurement = useMeasurementStore((state) => state.stopMeasurement);
+  const stopActiveMeasurement = useMeasurementStore(
+    (state) => state.stopActiveMeasurement
+  );
+  const removeMeasurement = useMeasurementStore(
+    (state) => state.removeMeasurement
+  );
+  const clearMeasurements = useMeasurementStore(
+    (state) => state.clearMeasurements
+  );
   const terrains = useTerrainStore((state) => state.terrains);
   const addTerrain = useTerrainStore((state) => state.addTerrain);
   const duplicateTerrain = useTerrainStore((state) => state.duplicateTerrain);
@@ -83,11 +94,7 @@ const App = () => {
     }
   };
 
-  const handleToggleMeasurement = () => {
-    if (measurementActive) {
-      stopMeasurement();
-      return;
-    }
+  const handleNewMeasurement = () => {
     const pointA = { x: boardWidthIn / 2, y: boardHeightIn / 2 };
     const pointB = { x: pointA.x + 6, y: pointA.y };
     startMeasurement(pointA, pointB);
@@ -264,13 +271,50 @@ const App = () => {
         <Board />
       </main>
       <div className="fab">
-        <button
-          className="fab__button"
-          type="button"
-          onClick={handleToggleMeasurement}
-        >
-          {measurementActive ? "Stop Measure" : "Measure"}
-        </button>
+        <div className="fab__group">
+          <div className="fab__label">Measurement</div>
+          <div className="fab__row fab__row--stack">
+            <button
+              className="fab__chip"
+              type="button"
+              onClick={handleNewMeasurement}
+            >
+              New Measurement
+            </button>
+            <button
+              className="fab__chip"
+              type="button"
+              onClick={stopActiveMeasurement}
+              disabled={!activeMeasurementId}
+            >
+              Stop Active
+            </button>
+            <button
+              className="fab__chip fab__chip--danger"
+              type="button"
+              onClick={clearMeasurements}
+              disabled={measurements.length === 0}
+            >
+              Clear All
+            </button>
+          </div>
+          {measurements.length > 0 && (
+            <div className="fab__row fab__row--stack">
+              {measurements.map((measurement, index) => (
+                <div key={measurement.id} className="fab__pill">
+                  <span>Measure {index + 1}</span>
+                  <button
+                    className="fab__pill-remove"
+                    type="button"
+                    onClick={() => removeMeasurement(measurement.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {selectedUnit && (
           <div className="fab__group">
             <div className="fab__label">Ranges</div>

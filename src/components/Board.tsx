@@ -106,12 +106,12 @@ const Board = () => {
   const selection = useSelectionStore((state) => state.selection);
   const setSelection = useSelectionStore((state) => state.setSelection);
   const clearSelection = useSelectionStore((state) => state.clearSelection);
-  const measurementActive = useMeasurementStore((state) => state.isActive);
-  const pointA = useMeasurementStore((state) => state.pointA);
-  const pointB = useMeasurementStore((state) => state.pointB);
-  const snappedUnitId = useMeasurementStore((state) => state.snappedUnitId);
-  const setPointA = useMeasurementStore((state) => state.setPointA);
-  const setPointB = useMeasurementStore((state) => state.setPointB);
+  const measurements = useMeasurementStore((state) => state.measurements);
+  const activeMeasurementId = useMeasurementStore(
+    (state) => state.activeMeasurementId
+  );
+  const setPointA = useMeasurementStore((state) => state.setActivePointA);
+  const setPointB = useMeasurementStore((state) => state.setActivePointB);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -321,19 +321,28 @@ const Board = () => {
   }, [boardHeightPx, boardWidthPx, heightIn, showGrid, widthIn]);
 
   const findSnapUnit = (point: { x: number; y: number }) => {
-    let closest: { unit: (typeof units)[number]; distance: number } | null =
-      null;
+    let closest:
+      | { unit: (typeof units)[number]; distance: number; anchor: { x: number; y: number } }
+      | null = null;
     units.forEach((unit) => {
       const radius = unit.iconDiameterInches / 2;
-      const distance = Math.hypot(point.x - unit.x, point.y - unit.y);
-      const threshold = radius + SNAP_DISTANCE_IN;
-      if (distance <= threshold) {
-        if (!closest || distance < closest.distance) {
-          closest = { unit, distance };
+      const anchors = [
+        { x: unit.x, y: unit.y },
+        ...(unit.plannedX !== undefined && unit.plannedY !== undefined
+          ? [{ x: unit.plannedX, y: unit.plannedY }]
+          : []),
+      ];
+      anchors.forEach((anchor) => {
+        const distance = Math.hypot(point.x - anchor.x, point.y - anchor.y);
+        const threshold = radius + SNAP_DISTANCE_IN;
+        if (distance <= threshold) {
+          if (!closest || distance < closest.distance) {
+            closest = { unit, distance, anchor };
+          }
         }
-      }
+      });
     });
-    return closest?.unit ?? null;
+    return closest;
   };
 
   const activeDragUnit = dragState
@@ -347,48 +356,62 @@ const Board = () => {
       )
     : 0;
 
-  const snappedUnit = snappedUnitId
-    ? units.find((unit) => unit.id === snappedUnitId) ?? null
-    : null;
+  const activeMeasurement =
+    measurements.find((measurement) => measurement.id === activeMeasurementId) ??
+    null;
 
-  const measurementStart = (() => {
-    if (!measurementActive || !pointA || !pointB) {
-      return null;
-    }
-    if (!snappedUnit) {
-      return pointA;
-    }
-    const dx = pointB.x - snappedUnit.x;
-    const dy = pointB.y - snappedUnit.y;
-    const length = Math.hypot(dx, dy);
-    const radius = snappedUnit.iconDiameterInches / 2;
-    if (length === 0) {
-      return { x: snappedUnit.x, y: snappedUnit.y };
-    }
-    return {
-      x: snappedUnit.x + (dx / length) * radius,
-      y: snappedUnit.y + (dy / length) * radius,
-    };
-  })();
-
-  const pointAVisual =
-    measurementActive && pointA && measurementStart && snappedUnit
-      ? measurementStart
-      : pointA;
-
-  const measurementDistance = (() => {
-    if (!measurementActive || !pointA || !pointB) {
+  const measurementDistance = (measurement: typeof activeMeasurement) => {
+    if (!measurement) {
       return 0;
     }
-    if (snappedUnit) {
+    if (measurement.snappedUnitId) {
+      const snappedUnit =
+        units.find((unit) => unit.id === measurement.snappedUnitId) ?? null;
+      if (!snappedUnit) {
+        return Math.hypot(
+          measurement.pointB.x - measurement.pointA.x,
+          measurement.pointB.y - measurement.pointA.y
+        );
+      }
       const radius = snappedUnit.iconDiameterInches / 2;
       return Math.max(
         0,
-        Math.hypot(pointB.x - snappedUnit.x, pointB.y - snappedUnit.y) - radius
+        Math.hypot(
+          measurement.pointB.x - measurement.pointA.x,
+          measurement.pointB.y - measurement.pointA.y
+        ) - radius
       );
     }
-    return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
-  })();
+    return Math.hypot(
+      measurement.pointB.x - measurement.pointA.x,
+      measurement.pointB.y - measurement.pointA.y
+    );
+  };
+
+  const measurementStart = (measurement: typeof activeMeasurement) => {
+    if (!measurement) {
+      return null;
+    }
+    if (!measurement.snappedUnitId) {
+      return measurement.pointA;
+    }
+    const snappedUnit =
+      units.find((unit) => unit.id === measurement.snappedUnitId) ?? null;
+    if (!snappedUnit) {
+      return measurement.pointA;
+    }
+    const dx = measurement.pointB.x - measurement.pointA.x;
+    const dy = measurement.pointB.y - measurement.pointA.y;
+    const length = Math.hypot(dx, dy);
+    const radius = snappedUnit.iconDiameterInches / 2;
+    if (length === 0) {
+      return measurement.pointA;
+    }
+    return {
+      x: measurement.pointA.x + (dx / length) * radius,
+      y: measurement.pointA.y + (dy / length) * radius,
+    };
+  };
 
   const backgroundImageStyle = (() => {
     if (!backgroundImage) {
@@ -411,8 +434,8 @@ const Board = () => {
 
   const activeDistanceLabel = dragState
     ? `${dragDistance.toFixed(1)}"`
-    : measurementActive && pointA && pointB
-      ? `${measurementDistance.toFixed(1)}"`
+    : activeMeasurement
+      ? `${measurementDistance(activeMeasurement).toFixed(1)}"`
       : null;
 
   const movementLabelPosition = dragState
@@ -422,15 +445,6 @@ const Board = () => {
         (activeDragUnit?.iconDiameterInches ?? 0) / 2
       )
     : null;
-
-  const measurementLabelPosition =
-    measurementActive && measurementStart && pointB
-      ? getLabelFromStart(
-          measurementStart,
-          pointB,
-          snappedUnit ? snappedUnit.iconDiameterInches / 2 : 0
-        )
-      : null;
 
   return (
     <div className="board-canvas" ref={containerRef}>
@@ -497,6 +511,23 @@ const Board = () => {
               />
             ));
           })}
+          {units
+            .filter(
+              (unit) =>
+                unit.plannedX !== undefined && unit.plannedY !== undefined
+            )
+            .map((unit) => (
+              <Circle
+                key={`${unit.id}-origin`}
+                x={unit.x * PX_PER_INCH}
+                y={unit.y * PX_PER_INCH}
+                radius={(unit.iconDiameterInches / 2) * PX_PER_INCH}
+                stroke="#f6c35c"
+                strokeWidth={2}
+                dash={[6, 6]}
+                listening={false}
+              />
+            ))}
           {terrains.map((terrain) => {
             const isSelected =
               selection?.type === "terrain" && selection.id === terrain.id;
@@ -624,41 +655,60 @@ const Board = () => {
               </Group>
             );
           })}
-          {measurementActive && pointA && pointB && measurementStart && (
-            <Group>
-              <Line
-                points={[
-                  measurementStart.x * PX_PER_INCH,
-                  measurementStart.y * PX_PER_INCH,
-                  pointB.x * PX_PER_INCH,
-                  pointB.y * PX_PER_INCH,
-                ]}
-                stroke="#7bd389"
-                strokeWidth={3}
-              />
-              {snappedUnit && (
-                <Circle
-                  x={snappedUnit.x * PX_PER_INCH}
-                  y={snappedUnit.y * PX_PER_INCH}
-                  radius={
-                    (snappedUnit.iconDiameterInches / 2) * PX_PER_INCH + 4
-                  }
-                  stroke={MEASURE_A_COLOR}
-                  strokeWidth={2}
-                  dash={[6, 6]}
-                  listening={false}
+          {measurements.map((measurement) => {
+            const start = measurementStart(measurement);
+            if (!start) {
+              return null;
+            }
+            const isActive = measurement.id === activeMeasurementId;
+            const snappedUnit =
+              measurement.snappedUnitId &&
+              units.find((unit) => unit.id === measurement.snappedUnitId);
+            const labelPosition = {
+              x: (start.x + measurement.pointB.x) / 2,
+              y: (start.y + measurement.pointB.y) / 2,
+            };
+            const distance = measurementDistance(measurement);
+            return (
+              <Group key={measurement.id}>
+                <Line
+                  points={[
+                    start.x * PX_PER_INCH,
+                    start.y * PX_PER_INCH,
+                    measurement.pointB.x * PX_PER_INCH,
+                    measurement.pointB.y * PX_PER_INCH,
+                  ]}
+                  stroke="#7bd389"
+                  strokeWidth={3}
                 />
-              )}
-              {pointAVisual && (
+                {snappedUnit && (
+                  <Circle
+                    x={measurement.pointA.x * PX_PER_INCH}
+                    y={measurement.pointA.y * PX_PER_INCH}
+                    radius={
+                      (snappedUnit.iconDiameterInches / 2) * PX_PER_INCH + 4
+                    }
+                    stroke={MEASURE_A_COLOR}
+                    strokeWidth={2}
+                    dash={[6, 6]}
+                    listening={false}
+                  />
+                )}
                 <Group
-                  x={pointAVisual.x * PX_PER_INCH}
-                  y={pointAVisual.y * PX_PER_INCH}
-                  draggable
+                  x={start.x * PX_PER_INCH}
+                  y={start.y * PX_PER_INCH}
+                  draggable={isActive}
                   onDragStart={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
                     event.cancelBubble = true;
                     setIsHandleDragging(true);
                   }}
                   onDragMove={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
                     event.cancelBubble = true;
                     const node = event.target;
                     const next = {
@@ -667,12 +717,15 @@ const Board = () => {
                     };
                     const snap = findSnapUnit(next);
                     if (snap) {
-                      setPointA({ x: snap.x, y: snap.y }, snap.id);
+                      setPointA({ x: snap.anchor.x, y: snap.anchor.y }, snap.unit.id);
                     } else {
                       setPointA(next, null);
                     }
                   }}
                   onDragEnd={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
                     event.cancelBubble = true;
                     const node = event.target;
                     const next = {
@@ -681,7 +734,7 @@ const Board = () => {
                     };
                     const snap = findSnapUnit(next);
                     if (snap) {
-                      setPointA({ x: snap.x, y: snap.y }, snap.id);
+                      setPointA({ x: snap.anchor.x, y: snap.anchor.y }, snap.unit.id);
                     } else {
                       setPointA(next, null);
                     }
@@ -708,75 +761,82 @@ const Board = () => {
                     offsetY={10}
                   />
                 </Group>
-              )}
-              {measurementLabelPosition && (
                 <Label
-                  x={measurementLabelPosition.x * PX_PER_INCH}
-                  y={measurementLabelPosition.y * PX_PER_INCH}
+                  x={labelPosition.x * PX_PER_INCH}
+                  y={labelPosition.y * PX_PER_INCH}
                 >
-                <Tag
-                  fill="#0f1618"
-                  cornerRadius={6}
-                  stroke="#7bd389"
-                  strokeWidth={1}
-                />
-                <Text
-                  text={`${measurementDistance.toFixed(1)}"`}
-                  fill="#7bd389"
-                  fontSize={16}
-                  padding={6}
-                  fontStyle="bold"
-                />
+                  <Tag
+                    fill="#0f1618"
+                    cornerRadius={6}
+                    stroke="#7bd389"
+                    strokeWidth={1}
+                  />
+                  <Text
+                    text={`${distance.toFixed(1)}"`}
+                    fill="#7bd389"
+                    fontSize={16}
+                    padding={6}
+                    fontStyle="bold"
+                  />
                 </Label>
-              )}
-              <Group
-                x={pointB.x * PX_PER_INCH}
-                y={pointB.y * PX_PER_INCH}
-                draggable
-                onDragStart={(event) => {
-                  event.cancelBubble = true;
-                  setIsHandleDragging(true);
-                }}
-                onDragMove={(event) => {
-                  event.cancelBubble = true;
-                  const node = event.target;
-                  setPointB({
-                    x: node.x() / PX_PER_INCH,
-                    y: node.y() / PX_PER_INCH,
-                  });
-                }}
-                onDragEnd={(event) => {
-                  event.cancelBubble = true;
-                  const node = event.target;
-                  setPointB({
-                    x: node.x() / PX_PER_INCH,
-                    y: node.y() / PX_PER_INCH,
-                  });
-                  setIsHandleDragging(false);
-                }}
-              >
-                <Circle
-                  radius={9}
-                  fill={MEASURE_B_COLOR}
-                  stroke="#0f1618"
-                  strokeWidth={2}
-                  hitStrokeWidth={10}
-                />
-                <Text
-                  text="B"
-                  fill="#0f1618"
-                  fontSize={12}
-                  fontStyle="700"
-                  align="center"
-                  verticalAlign="middle"
-                  width={18}
-                  height={18}
-                  offsetX={9}
-                  offsetY={9}
-                />
+                <Group
+                  x={measurement.pointB.x * PX_PER_INCH}
+                  y={measurement.pointB.y * PX_PER_INCH}
+                  draggable={isActive}
+                  onDragStart={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
+                    event.cancelBubble = true;
+                    setIsHandleDragging(true);
+                  }}
+                  onDragMove={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
+                    event.cancelBubble = true;
+                    const node = event.target;
+                    setPointB({
+                      x: node.x() / PX_PER_INCH,
+                      y: node.y() / PX_PER_INCH,
+                    });
+                  }}
+                  onDragEnd={(event) => {
+                    if (!isActive) {
+                      return;
+                    }
+                    event.cancelBubble = true;
+                    const node = event.target;
+                    setPointB({
+                      x: node.x() / PX_PER_INCH,
+                      y: node.y() / PX_PER_INCH,
+                    });
+                    setIsHandleDragging(false);
+                  }}
+                >
+                  <Circle
+                    radius={9}
+                    fill={MEASURE_B_COLOR}
+                    stroke="#0f1618"
+                    strokeWidth={2}
+                    hitStrokeWidth={10}
+                  />
+                  <Text
+                    text="B"
+                    fill="#0f1618"
+                    fontSize={12}
+                    fontStyle="700"
+                    align="center"
+                    verticalAlign="middle"
+                    width={18}
+                    height={18}
+                    offsetX={9}
+                    offsetY={9}
+                  />
+                </Group>
               </Group>
-            </Group>
-          )}
+            );
+          })}
           {(dragState || units.some((unit) => unit.plannedX !== undefined)) && (
             <Group>
               {dragState && (
