@@ -5,6 +5,7 @@ import { Unit, useUnitsStore } from "./store/unitsStore";
 import { useMeasurementStore } from "./store/measurementStore";
 import { useTerrainStore } from "./store/terrainStore";
 import { useSelectionStore } from "./store/selectionStore";
+import { useDiceStore } from "./store/diceStore";
 
 const App = () => {
   const showGrid = useBoardStore((state) => state.showGrid);
@@ -71,6 +72,12 @@ const App = () => {
   const [unitColorInput, setUnitColorInput] = useState("");
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const lastImageUrlRef = useRef<string | null>(null);
+  const [isDiceOpen, setIsDiceOpen] = useState(false);
+  const diceSections = useDiceStore((state) => state.sections);
+  const setDiceCountInput = useDiceStore((state) => state.setCountInput);
+  const setDiceTarget = useDiceStore((state) => state.setTarget);
+  const rollSection = useDiceStore((state) => state.rollSection);
+  const rollAll = useDiceStore((state) => state.rollAll);
 
   const hasPlannedMoves = units.some(
     (unit) => unit.plannedX !== undefined || unit.plannedY !== undefined
@@ -561,7 +568,140 @@ const App = () => {
         >
           Reset Moves
         </button>
+        <button
+          className="fab__button"
+          type="button"
+          onClick={() => setIsDiceOpen(true)}
+        >
+          Dice
+        </button>
       </div>
+      {isDiceOpen && (
+        <div className="dice">
+          <div className="dice__modal">
+            <div className="dice__header">
+              <div className="dice__title">Dice Roller</div>
+              <div className="dice__actions">
+                <button
+                  className="dice__button"
+                  type="button"
+                  onClick={rollAll}
+                >
+                  Reroll All
+                </button>
+                <button
+                  className="dice__button dice__button--ghost"
+                  type="button"
+                  onClick={() => setIsDiceOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="dice__sections">
+              {diceSections.map((section, index) => {
+                const parsedCount = Number(section.countInput);
+                const count = Number.isFinite(parsedCount) ? parsedCount : 0;
+                const sum = section.results.reduce(
+                  (total, value) => total + value,
+                  0
+                );
+                const successes =
+                  section.target !== null
+                    ? section.results.filter((value) => value >= section.target!).length
+                    : null;
+                return (
+                  <div key={index} className="dice__section">
+                    <div className="dice__section-header">
+                      <div className="dice__section-title">
+                        Roll {index + 1}
+                      </div>
+                      <button
+                        className="dice__button"
+                        type="button"
+                        onClick={() => rollSection(index)}
+                      >
+                        Roll
+                      </button>
+                    </div>
+                    <div className="dice__controls">
+                      <label className="dice__control">
+                        <span>Dice</span>
+                        <input
+                          className="dice__input"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Count"
+                          value={section.countInput}
+                          onChange={(event) =>
+                            setDiceCountInput(index, event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className="dice__control">
+                        <span>Target</span>
+                        <select
+                          className="dice__select"
+                          value={section.target ?? ""}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setDiceTarget(index, value ? Number(value) : null);
+                          }}
+                        >
+                          <option value="">None</option>
+                          {[2, 3, 4, 5, 6].map((value) => (
+                            <option key={value} value={value}>
+                              {value}+
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    {section.error && (
+                      <div className="dice__error">{section.error}</div>
+                    )}
+                    <div className="dice__summary">
+                      <div>Dice: {count}</div>
+                      <div>Sum: {sum}</div>
+                      {section.target !== null && (
+                        <div>
+                          Successes: {successes ?? 0} (≥{section.target})
+                        </div>
+                      )}
+                    </div>
+                  <div className="dice__results">
+                    {section.results.length > 0 ? (
+                      <div className="dice__result-list">
+                        {[...section.results]
+                          .sort((a, b) => b - a)
+                          .map((value, resultIndex) => {
+                            const isSuccess =
+                              section.target !== null && value >= section.target;
+                            const isFailure =
+                              section.target !== null && value < section.target;
+                            const className = isSuccess
+                              ? "dice__result dice__result--success"
+                              : isFailure
+                                ? "dice__result dice__result--fail"
+                                : "dice__result";
+                            return (
+                              <span key={resultIndex} className={className}>
+                                {value}
+                              </span>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      "No rolls yet."
+                    )}
+                  </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {selectedUnit && isInspectorOpen && (
         <div className="inspector">
           <div className="inspector__header">
