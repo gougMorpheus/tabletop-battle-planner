@@ -1,0 +1,80 @@
+﻿@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap");
+
+:root {
+  color: #0c1214;
+  background: #f1ede7;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at top, #f7f2ec 0%, #dcd6ce 80%);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.top-bar {
+  align-items: center;
+  background: #f9f6f1;
+  border-bottom: 1px solid #d0c7bb;
+  display: flex;
+  height: 56px;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.top-bar__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.top-bar__button {
+  background: #1f2d2f;
+  border: none;
+  border-radius: 999px;
+  color: #f9f6f1;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
+.top-bar__button:active {
+  transform: scale(0.97);
+}
+
+.board-shell {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.board-canvas {
+  background: linear-gradient(145deg, #162022, #0f1618);
+  border-radius: 16px;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+}
+
+.board-canvas canvas {
+  touch-action: none;
+}
