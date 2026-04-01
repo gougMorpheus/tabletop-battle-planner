@@ -6,6 +6,7 @@ import { useMeasurementStore } from "./store/measurementStore";
 import { useTerrainStore } from "./store/terrainStore";
 import { useSelectionStore } from "./store/selectionStore";
 import { useDiceStore } from "./store/diceStore";
+import { useGameTrackerStore } from "./store/gameTrackerStore";
 
 const App = () => {
   const showGrid = useBoardStore((state) => state.showGrid);
@@ -63,6 +64,7 @@ const App = () => {
       : null;
   const [rangeInput, setRangeInput] = useState("");
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
   const [modelCountInput, setModelCountInput] = useState("");
   const [woundsPerModelInput, setWoundsPerModelInput] = useState("");
   const [iconDiameterInput, setIconDiameterInput] = useState("");
@@ -78,6 +80,18 @@ const App = () => {
   const setDiceTarget = useDiceStore((state) => state.setTarget);
   const rollSection = useDiceStore((state) => state.rollSection);
   const rollAll = useDiceStore((state) => state.rollAll);
+  const playerA = useGameTrackerStore((state) => state.playerA);
+  const playerB = useGameTrackerStore((state) => state.playerB);
+  const battleRound = useGameTrackerStore((state) => state.battleRound);
+  const activePlayer = useGameTrackerStore((state) => state.activePlayer);
+  const phase = useGameTrackerStore((state) => state.phase);
+  const adjustPlayer = useGameTrackerStore((state) => state.adjustPlayer);
+  const setBattleRound = useGameTrackerStore((state) => state.setBattleRound);
+  const nextPhase = useGameTrackerStore((state) => state.nextPhase);
+  const prevPhase = useGameTrackerStore((state) => state.prevPhase);
+  const toggleActivePlayer = useGameTrackerStore(
+    (state) => state.toggleActivePlayer
+  );
 
   const hasPlannedMoves = units.some(
     (unit) => unit.plannedX !== undefined || unit.plannedY !== undefined
@@ -173,6 +187,10 @@ const App = () => {
       return;
     }
     setIsInspectorOpen((open) => !open);
+  };
+
+  const handleTrackerToggle = () => {
+    setIsTrackerExpanded((open) => !open);
   };
 
   const handleUnitUpdate = (updates: Partial<Unit>) => {
@@ -276,129 +294,444 @@ const App = () => {
       </header>
       <main className="board-shell">
         <Board />
-      </main>
-      <div className="fab">
-        <div className="fab__group">
-          <div className="fab__label">Measurement</div>
-          <div className="fab__row fab__row--stack">
+        <input
+          ref={imageInputRef}
+          className="fab__hidden-input"
+          type="file"
+          accept="image/*"
+          onChange={handleBackgroundChange}
+        />
+        <div className="tool-dock">
+          <button className="tool-dock__button" type="button" onClick={handleAddUnit}>
+            + Unit
+          </button>
+          <button className="tool-dock__button" type="button" onClick={handleAddRectTerrain}>
+            + Rect
+          </button>
+          <button className="tool-dock__button" type="button" onClick={handleAddCircleTerrain}>
+            + Circle
+          </button>
+          <button className="tool-dock__button" type="button" onClick={handleNewMeasurement}>
+            Measure
+          </button>
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={stopActiveMeasurement}
+            disabled={!activeMeasurementId}
+          >
+            Stop Measure
+          </button>
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={clearMeasurements}
+            disabled={measurements.length === 0}
+          >
+            Clear Measures
+          </button>
+          <button className="tool-dock__button" type="button" onClick={() => setIsDiceOpen(true)}>
+            Dice
+          </button>
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={handleSelectBackground}
+          >
+            {backgroundImageUrl ? "Replace BG" : "Add BG"}
+          </button>
+          {backgroundImageUrl && (
             <button
-              className="fab__chip"
+              className="tool-dock__button tool-dock__button--ghost"
               type="button"
-              onClick={handleNewMeasurement}
+              onClick={handleClearBackground}
             >
-              New Measurement
+              Remove BG
             </button>
-            <button
-              className="fab__chip"
-              type="button"
-              onClick={stopActiveMeasurement}
-              disabled={!activeMeasurementId}
-            >
-              Stop Active
-            </button>
-            <button
-              className="fab__chip fab__chip--danger"
-              type="button"
-              onClick={clearMeasurements}
-              disabled={measurements.length === 0}
-            >
-              Clear All
-            </button>
-          </div>
-          {measurements.length > 0 && (
-            <div className="fab__row fab__row--stack">
-              {measurements.map((measurement, index) => (
-                <div key={measurement.id} className="fab__pill">
-                  <span>Measure {index + 1}</span>
-                  <button
-                    className="fab__pill-remove"
-                    type="button"
-                    onClick={() => removeMeasurement(measurement.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
           )}
-        </div>
-        {selectedUnit && (
-          <div className="fab__group">
-            <div className="fab__label">Ranges</div>
-            <div className="fab__row">
-              {[6, 12, 18, 24].map((range) => (
-                <button
-                  key={range}
-                  className="fab__chip"
-                  type="button"
-                  onClick={() => handleAddRange(range)}
-                >
-                  {range}"
-                </button>
-              ))}
-            </div>
-            <div className="fab__row fab__row--stack">
-              <input
-                className="fab__input"
-                type="number"
-                inputMode="decimal"
-                placeholder='Range (")'
-                value={rangeInput}
-                onChange={(event) => setRangeInput(event.target.value)}
-              />
+          {selectedUnit && (
+            <>
               <button
-                className="fab__chip"
+                className="tool-dock__button tool-dock__button--ghost"
                 type="button"
-                onClick={handleRangeSubmit}
+                onClick={() => handleAddRange(6)}
               >
-                Add
+                + Range 6
+              </button>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={() => handleAddRange(12)}
+              >
+                + Range 12
+              </button>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={handleInspectorToggle}
+              >
+                {isInspectorOpen ? "Hide Unit" : "Unit Inspector"}
+              </button>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={handleDuplicateUnit}
+              >
+                Duplicate Unit
+              </button>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={handleDeleteUnit}
+              >
+                Delete Unit
+              </button>
+            </>
+          )}
+          {selectedTerrain && (
+            <>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={() => duplicateTerrain(selectedTerrain.id)}
+              >
+                Duplicate Terrain
+              </button>
+              <button
+                className="tool-dock__button tool-dock__button--ghost"
+                type="button"
+                onClick={() => {
+                  deleteTerrain(selectedTerrain.id);
+                  clearSelection();
+                }}
+              >
+                Delete Terrain
+              </button>
+            </>
+          )}
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={commitPlannedMoves}
+            disabled={!hasPlannedMoves}
+          >
+            Commit
+          </button>
+          <button
+            className="tool-dock__button tool-dock__button--ghost"
+            type="button"
+            onClick={resetPlannedMoves}
+            disabled={!hasPlannedMoves}
+          >
+            Reset
+          </button>
+        </div>
+      </main>
+      <div className="tracker tracker--compact">
+        <div className="tracker__compact">
+          <button className="tracker__expand" type="button" onClick={handleTrackerToggle}>
+            {isTrackerExpanded ? "Hide" : "Expand"}
+          </button>
+          <div className="tracker__compact-row">
+            <span>R{battleRound}</span>
+            <span>{phase}</span>
+            <span>Active: {activePlayer}</span>
+          </div>
+          <div className="tracker__compact-row">
+            <span>A VP {playerA.vp}</span>
+            <span>A CP {playerA.cp}</span>
+            <span>B VP {playerB.vp}</span>
+            <span>B CP {playerB.cp}</span>
+          </div>
+        </div>
+        {isTrackerExpanded && (
+          <div className="tracker__expanded">
+            <div className="tracker__header">
+              <div className="tracker__title">Game Tracker</div>
+              <button
+                className="tracker__chip"
+                type="button"
+                onClick={toggleActivePlayer}
+              >
+                Active: Player {activePlayer}
               </button>
             </div>
-            {selectedUnit && selectedUnit.ranges.length > 0 && (
-              <div className="fab__row fab__row--stack">
-                {selectedUnit.ranges.map((range, index) => (
-                  <div
-                    key={`${selectedUnit.id}-range-${index}`}
-                    className="fab__pill"
-                  >
-                    <span>{range}"</span>
+            <div className="tracker__row">
+              <div className="tracker__round">
+                <span>Round</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={battleRound}
+                  onChange={(event) => setBattleRound(Number(event.target.value))}
+                />
+              </div>
+              <div className="tracker__phase">
+                <span>Phase</span>
+                <div className="tracker__phase-controls">
+                  <button type="button" onClick={prevPhase}>
+                    ◀
+                  </button>
+                  <div>{phase}</div>
+                  <button type="button" onClick={nextPhase}>
+                    ▶
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="tracker__players">
+              <div className="tracker__player">
+                <div className="tracker__player-title">Player A</div>
+                <div className="tracker__stat">
+                  <span>VP</span>
+                  <div className="tracker__controls">
                     <button
-                      className="fab__pill-remove"
                       type="button"
-                      onClick={() => removeRange(selectedUnit.id, index)}
+                      onClick={() => adjustPlayer("A", "vp", -1)}
                     >
-                      Remove
+                      -
+                    </button>
+                    <div>{playerA.vp}</div>
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("A", "vp", 1)}
+                    >
+                      +
                     </button>
                   </div>
-                ))}
+                </div>
+                <div className="tracker__stat">
+                  <span>CP</span>
+                  <div className="tracker__controls">
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("A", "cp", -1)}
+                    >
+                      -
+                    </button>
+                    <div>{playerA.cp}</div>
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("A", "cp", 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
+              <div className="tracker__player">
+                <div className="tracker__player-title">Player B</div>
+                <div className="tracker__stat">
+                  <span>VP</span>
+                  <div className="tracker__controls">
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("B", "vp", -1)}
+                    >
+                      -
+                    </button>
+                    <div>{playerB.vp}</div>
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("B", "vp", 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div className="tracker__stat">
+                  <span>CP</span>
+                  <div className="tracker__controls">
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("B", "cp", -1)}
+                    >
+                      -
+                    </button>
+                    <div>{playerB.cp}</div>
+                    <button
+                      type="button"
+                      onClick={() => adjustPlayer("B", "cp", 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
-        <div className="fab__group">
-          <div className="fab__label">Terrain</div>
-          <div className="fab__row">
+      </div>
+      {selectedUnit && isInspectorOpen && (
+        <div className="inspector inspector--floating">
+          <div className="inspector__header">
+            <div className="inspector__title">Unit Inspector</div>
             <button
-              className="fab__chip"
+              className="inspector__close"
               type="button"
-              onClick={handleAddRectTerrain}
+              onClick={() => setIsInspectorOpen(false)}
             >
-              Add Rect
-            </button>
-            <button
-              className="fab__chip"
-              type="button"
-              onClick={handleAddCircleTerrain}
-            >
-              Add Circle
+              Close
             </button>
           </div>
-          {selectedTerrain && (
-            <div className="fab__row fab__row--stack">
+          <div className="inspector__content">
+            <label className="inspector__field">
+              <span>Name</span>
               <input
-                className="fab__input"
                 type="text"
-                placeholder="Label"
+                value={unitNameInput}
+                onChange={(event) => setUnitNameInput(event.target.value)}
+                onBlur={() => handleUnitUpdate({ name: unitNameInput.trim() })}
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Initials</span>
+              <input
+                type="text"
+                value={unitInitialsInput}
+                onChange={(event) => setUnitInitialsInput(event.target.value)}
+                onBlur={() =>
+                  handleUnitUpdate({ initials: unitInitialsInput.trim() })
+                }
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Model Count</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={modelCountInput}
+                onChange={(event) => setModelCountInput(event.target.value)}
+                onBlur={() => {
+                  if (!selectedUnit) {
+                    return;
+                  }
+                  const nextValue = finalizeNumericInput(
+                    modelCountInput,
+                    selectedUnit.modelCount,
+                    1
+                  );
+                  handleModelCountChange(nextValue);
+                  setModelCountInput(String(nextValue));
+                }}
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Wounds / Model</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={woundsPerModelInput}
+                onChange={(event) => setWoundsPerModelInput(event.target.value)}
+                onBlur={() => {
+                  if (!selectedUnit) {
+                    return;
+                  }
+                  const nextValue = finalizeNumericInput(
+                    woundsPerModelInput,
+                    selectedUnit.woundsPerModel,
+                    1
+                  );
+                  handleWoundsPerModelChange(nextValue);
+                  setWoundsPerModelInput(String(nextValue));
+                }}
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Icon Diameter (in)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={iconDiameterInput}
+                onChange={(event) => setIconDiameterInput(event.target.value)}
+                onBlur={() => {
+                  if (!selectedUnit) {
+                    return;
+                  }
+                  const nextValue = finalizeNumericInput(
+                    iconDiameterInput,
+                    selectedUnit.iconDiameterInches,
+                    0.5
+                  );
+                  handleUnitUpdate({ iconDiameterInches: nextValue });
+                  setIconDiameterInput(String(nextValue));
+                }}
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Color</span>
+              <input
+                type="text"
+                value={unitColorInput}
+                onChange={(event) => setUnitColorInput(event.target.value)}
+                onBlur={() => handleUnitUpdate({ color: unitColorInput.trim() })}
+              />
+            </label>
+            <div className="inspector__stats">
+              <div>Alive: {derivedStats?.alive ?? 0}</div>
+              <div>Dead: {derivedStats?.dead ?? 0}</div>
+              <div>Wounds Remaining: {derivedStats?.remaining ?? 0}</div>
+            </div>
+            <div className="inspector__wounds">
+              {selectedUnit.currentModelWounds.map((wounds, index) => (
+                <label className="inspector__wound" key={index}>
+                  <span>Model {index + 1}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={woundInputs[index] ?? String(wounds)}
+                    onChange={(event) =>
+                      setWoundInputs((prev) => {
+                        const next = [...prev];
+                        next[index] = event.target.value;
+                        return next;
+                      })
+                    }
+                    onBlur={() => {
+                      if (!selectedUnit) {
+                        return;
+                      }
+                      const fallback = selectedUnit.currentModelWounds[index] ?? 0;
+                      const nextValue = finalizeNumericInput(
+                        woundInputs[index] ?? String(fallback),
+                        fallback,
+                        0
+                      );
+                      const clamped = Math.min(
+                        nextValue,
+                        selectedUnit.woundsPerModel
+                      );
+                      handleModelWoundChange(index, clamped);
+                      setWoundInputs((prev) => {
+                        const next = [...prev];
+                        next[index] = String(clamped);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedTerrain && (
+        <div className="inspector inspector--floating">
+          <div className="inspector__header">
+            <div className="inspector__title">Terrain Inspector</div>
+            <button
+              className="inspector__close"
+              type="button"
+              onClick={() => clearSelection()}
+            >
+              Close
+            </button>
+          </div>
+          <div className="inspector__content">
+            <label className="inspector__field">
+              <span>Label</span>
+              <input
+                type="text"
                 value={selectedTerrain.label ?? ""}
                 onChange={(event) =>
                   updateTerrain(selectedTerrain.id, {
@@ -406,10 +739,11 @@ const App = () => {
                   })
                 }
               />
+            </label>
+            <label className="inspector__field">
+              <span>Color</span>
               <input
-                className="fab__input"
                 type="text"
-                placeholder="#Color"
                 value={selectedTerrain.color}
                 onChange={(event) =>
                   updateTerrain(selectedTerrain.id, {
@@ -417,11 +751,12 @@ const App = () => {
                   })
                 }
               />
+            </label>
+            <label className="inspector__field">
+              <span>Rotation</span>
               <input
-                className="fab__input"
                 type="number"
                 inputMode="decimal"
-                placeholder="Rotation"
                 value={selectedTerrain.rotation}
                 onChange={(event) =>
                   updateTerrain(selectedTerrain.id, {
@@ -429,13 +764,14 @@ const App = () => {
                   })
                 }
               />
-              {selectedTerrain.type === "rect" ? (
-                <>
+            </label>
+            {selectedTerrain.type === "rect" ? (
+              <>
+                <label className="inspector__field">
+                  <span>Width</span>
                   <input
-                    className="fab__input"
                     type="number"
                     inputMode="decimal"
-                    placeholder="Width"
                     value={selectedTerrain.widthInches}
                     onChange={(event) =>
                       updateTerrain(selectedTerrain.id, {
@@ -446,11 +782,12 @@ const App = () => {
                       })
                     }
                   />
+                </label>
+                <label className="inspector__field">
+                  <span>Height</span>
                   <input
-                    className="fab__input"
                     type="number"
                     inputMode="decimal"
-                    placeholder="Height"
                     value={selectedTerrain.heightInches}
                     onChange={(event) =>
                       updateTerrain(selectedTerrain.id, {
@@ -461,13 +798,14 @@ const App = () => {
                       })
                     }
                   />
-                </>
-              ) : (
+                </label>
+              </>
+            ) : (
+              <label className="inspector__field">
+                <span>Radius</span>
                 <input
-                  className="fab__input"
                   type="number"
                   inputMode="decimal"
-                  placeholder="Radius"
                   value={selectedTerrain.radiusInches}
                   onChange={(event) =>
                     updateTerrain(selectedTerrain.id, {
@@ -478,104 +816,30 @@ const App = () => {
                     })
                   }
                 />
-              )}
-              <div className="fab__row">
-                <button
-                  className="fab__chip"
-                  type="button"
-                  onClick={() => duplicateTerrain(selectedTerrain.id)}
-                >
-                  Duplicate
-                </button>
-                <button
-                  className="fab__chip fab__chip--danger"
-                  type="button"
-                  onClick={() => {
-                    deleteTerrain(selectedTerrain.id);
-                    clearSelection();
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="fab__group">
-          <div className="fab__label">Board</div>
-          <input
-            ref={imageInputRef}
-            className="fab__hidden-input"
-            type="file"
-            accept="image/*"
-            onChange={handleBackgroundChange}
-          />
-          <div className="fab__row fab__row--stack">
-            <button className="fab__chip" type="button" onClick={handleSelectBackground}>
-              {backgroundImageUrl ? "Replace Image" : "Add Background"}
-            </button>
-            {backgroundImageUrl && (
-              <button
-                className="fab__chip fab__chip--danger"
-                type="button"
-                onClick={handleClearBackground}
-              >
-                Remove Image
-              </button>
+              </label>
             )}
+            <div className="inspector__row">
+              <button
+                className="inspector__button"
+                type="button"
+                onClick={() => duplicateTerrain(selectedTerrain.id)}
+              >
+                Duplicate
+              </button>
+              <button
+                className="inspector__button inspector__button--danger"
+                type="button"
+                onClick={() => {
+                  deleteTerrain(selectedTerrain.id);
+                  clearSelection();
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
-        <button className="fab__button" type="button" onClick={handleAddUnit}>
-          Add Unit
-        </button>
-        <button
-          className="fab__button"
-          type="button"
-          onClick={handleDuplicateUnit}
-          disabled={!selectedUnit}
-        >
-          Duplicate
-        </button>
-        <button
-          className="fab__button fab__button--danger"
-          type="button"
-          onClick={handleDeleteUnit}
-          disabled={!selectedUnit}
-        >
-          Delete
-        </button>
-        <button
-          className="fab__button"
-          type="button"
-          onClick={handleInspectorToggle}
-          disabled={!selectedUnit}
-        >
-          {isInspectorOpen ? "Hide Inspector" : "Inspector"}
-        </button>
-        <button
-          className="fab__button"
-          type="button"
-          onClick={commitPlannedMoves}
-          disabled={!hasPlannedMoves}
-        >
-          Commit Moves
-        </button>
-        <button
-          className="fab__button"
-          type="button"
-          onClick={resetPlannedMoves}
-          disabled={!hasPlannedMoves}
-        >
-          Reset Moves
-        </button>
-        <button
-          className="fab__button"
-          type="button"
-          onClick={() => setIsDiceOpen(true)}
-        >
-          Dice
-        </button>
-      </div>
+      )}
       {isDiceOpen && (
         <div className="dice">
           <div className="dice__modal">
