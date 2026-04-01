@@ -55,6 +55,7 @@ const App = () => {
   const clearMeasurements = useMeasurementStore(
     (state) => state.clearMeasurements
   );
+  const setMeasurements = useMeasurementStore((state) => state.setMeasurements);
   const terrains = useTerrainStore((state) => state.terrains);
   const addTerrain = useTerrainStore((state) => state.addTerrain);
   const duplicateTerrain = useTerrainStore((state) => state.duplicateTerrain);
@@ -225,6 +226,7 @@ const App = () => {
     const boardState = useBoardStore.getState();
     const unitState = useUnitsStore.getState();
     const terrainState = useTerrainStore.getState();
+    const measurementState = useMeasurementStore.getState();
     const trackerState = useGameTrackerStore.getState();
     await saveScene(name, {
       board: {
@@ -237,6 +239,7 @@ const App = () => {
       },
       units: unitState.units,
       terrain: terrainState.terrains,
+      measurements: measurementState.measurements,
       gameTracker: {
         playerA: trackerState.playerA,
         playerB: trackerState.playerB,
@@ -251,9 +254,10 @@ const App = () => {
 
   const handleLoadScene = async (scene: SceneRecord) => {
     setBoardConfig(scene.data.board);
-    setUnits(scene.data.units as Unit[]);
-    setTerrains(scene.data.terrain as typeof terrains);
-    setTrackerState(scene.data.gameTracker as any);
+    setUnits(scene.data.units);
+    setTerrains(scene.data.terrain);
+    setMeasurements(scene.data.measurements ?? []);
+    setTrackerState(scene.data.gameTracker);
     clearSelection();
     setIsInspectorOpen(false);
     setIsScenesOpen(false);

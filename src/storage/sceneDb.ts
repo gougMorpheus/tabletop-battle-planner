@@ -1,3 +1,8 @@
+import { Measurement } from "../store/measurementStore";
+import { Terrain } from "../store/terrainStore";
+import { Phase } from "../store/gameTrackerStore";
+import { Unit } from "../store/unitsStore";
+
 export type SceneData = {
   board: {
     widthIn: number;
@@ -7,14 +12,15 @@ export type SceneData = {
     showGrid: boolean;
     backgroundImageUrl: string | null;
   };
-  units: unknown[];
-  terrain: unknown[];
+  units: Unit[];
+  terrain: Terrain[];
+  measurements: Measurement[];
   gameTracker: {
     playerA: { vp: number; cp: number };
     playerB: { vp: number; cp: number };
     battleRound: number;
     activePlayer: "A" | "B";
-    phase: string;
+    phase: Phase;
   };
 };
 
