@@ -24,6 +24,7 @@ type UnitsState = {
   setUnitPosition: (unitId: string, x: number, y: number) => void;
   addRange: (unitId: string, rangeInches: number) => void;
   removeRange: (unitId: string, rangeIndex: number) => void;
+  updateUnit: (unitId: string, updates: Partial<Unit>) => void;
 };
 
 const buildInitials = (name: string) => {
@@ -108,6 +109,12 @@ export const useUnitsStore = create<UnitsState>((set, get) => ({
               ranges: unit.ranges.filter((_, index) => index !== rangeIndex),
             }
           : unit
+      ),
+    })),
+  updateUnit: (unitId, updates) =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.id === unitId ? { ...unit, ...updates } : unit
       ),
     })),
 }));

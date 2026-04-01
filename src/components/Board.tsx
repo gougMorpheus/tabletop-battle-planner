@@ -25,6 +25,21 @@ const SNAP_DISTANCE_IN = 0.75;
 const MEASURE_A_COLOR = "#7bd389";
 const MEASURE_B_COLOR = "#f6c35c";
 
+const buildWoundSummary = (wounds: number[]) => {
+  const counts = new Map<number, number>();
+  wounds.forEach((value) => {
+    if (value <= 0) {
+      return;
+    }
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+  const entries = Array.from(counts.entries()).sort((a, b) => b[0] - a[0]);
+  if (entries.length === 0) {
+    return "0 alive";
+  }
+  return entries.map(([value, count]) => `${count}@${value}`).join("; ");
+};
+
 const clampScale = (scale: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 
@@ -693,6 +708,7 @@ const Board = () => {
           )}
           {units.map((unit) => {
             const radiusPx = (unit.iconDiameterInches / 2) * PX_PER_INCH;
+            const woundSummary = buildWoundSummary(unit.currentModelWounds);
             return (
               <Group
                 key={unit.id}
@@ -763,6 +779,18 @@ const Board = () => {
                   offsetX={radiusPx}
                   offsetY={radiusPx}
                 />
+                <Label x={-radiusPx} y={radiusPx + 8}>
+                  <Tag
+                    fill="rgba(15, 22, 24, 0.75)"
+                    cornerRadius={6}
+                  />
+                  <Text
+                    text={woundSummary}
+                    fill="#f9f6f1"
+                    fontSize={12}
+                    padding={4}
+                  />
+                </Label>
               </Group>
             );
           })}
