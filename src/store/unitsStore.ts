@@ -18,11 +18,9 @@ type UnitDraft = Partial<Omit<Unit, "id">> & { x?: number; y?: number };
 
 type UnitsState = {
   units: Unit[];
-  selectedUnitId: string | null;
   addUnit: (draft?: UnitDraft) => void;
   duplicateUnit: (unitId: string) => void;
   deleteUnit: (unitId: string) => void;
-  setSelectedUnitId: (unitId: string | null) => void;
   setUnitPosition: (unitId: string, x: number, y: number) => void;
   addRange: (unitId: string, rangeInches: number) => void;
   removeRange: (unitId: string, rangeIndex: number) => void;
@@ -62,11 +60,10 @@ const buildDefaultUnit = (index: number, draft?: UnitDraft): Unit => {
 
 export const useUnitsStore = create<UnitsState>((set, get) => ({
   units: [],
-  selectedUnitId: null,
   addUnit: (draft) =>
     set((state) => {
       const unit = buildDefaultUnit(state.units.length + 1, draft);
-      return { units: [...state.units, unit], selectedUnitId: unit.id };
+      return { units: [...state.units, unit] };
     }),
   duplicateUnit: (unitId) =>
     set((state) => {
@@ -81,16 +78,13 @@ export const useUnitsStore = create<UnitsState>((set, get) => ({
         x: source.x + 1,
         y: source.y + 1,
       };
-      return { units: [...state.units, unit], selectedUnitId: unit.id };
+      return { units: [...state.units, unit] };
     }),
   deleteUnit: (unitId) =>
     set((state) => {
       const units = state.units.filter((unit) => unit.id !== unitId);
-      const selectedUnitId =
-        state.selectedUnitId === unitId ? null : state.selectedUnitId;
-      return { units, selectedUnitId };
+      return { units };
     }),
-  setSelectedUnitId: (unitId) => set({ selectedUnitId: unitId }),
   setUnitPosition: (unitId, x, y) =>
     set((state) => ({
       units: state.units.map((unit) =>

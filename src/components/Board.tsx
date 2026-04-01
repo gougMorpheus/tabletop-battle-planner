@@ -14,6 +14,8 @@ import Konva from "konva";
 import { useBoardStore } from "../store/boardStore";
 import { useUnitsStore } from "../store/unitsStore";
 import { useMeasurementStore } from "../store/measurementStore";
+import { useTerrainStore } from "../store/terrainStore";
+import { useSelectionStore } from "../store/selectionStore";
 
 const PX_PER_INCH = 20;
 const MIN_SCALE = 0.25;
@@ -57,9 +59,14 @@ const Board = () => {
   const setPosition = useBoardStore((state) => state.setPosition);
 
   const units = useUnitsStore((state) => state.units);
-  const selectedUnitId = useUnitsStore((state) => state.selectedUnitId);
-  const setSelectedUnitId = useUnitsStore((state) => state.setSelectedUnitId);
   const setUnitPosition = useUnitsStore((state) => state.setUnitPosition);
+  const terrains = useTerrainStore((state) => state.terrains);
+  const setTerrainPosition = useTerrainStore(
+    (state) => state.setTerrainPosition
+  );
+  const selection = useSelectionStore((state) => state.selection);
+  const setSelection = useSelectionStore((state) => state.setSelection);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
   const measurementActive = useMeasurementStore((state) => state.isActive);
   const pointA = useMeasurementStore((state) => state.pointA);
   const pointB = useMeasurementStore((state) => state.pointB);
@@ -77,6 +84,7 @@ const Board = () => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [isPinching, setIsPinching] = useState(false);
   const [isHandleDragging, setIsHandleDragging] = useState(false);
+  const [isObjectDragging, setIsObjectDragging] = useState(false);
   const [dragState, setDragState] = useState<DragState | null>(null);
 
   const boardWidthPx = widthIn * PX_PER_INCH;
@@ -337,7 +345,7 @@ const Board = () => {
         y={position.y}
         scaleX={scale}
         scaleY={scale}
-        draggable={!isPinching && !isHandleDragging}
+        draggable={!isPinching && !isHandleDragging && !isObjectDragging}
         onDragMove={handleDragMove}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -355,6 +363,8 @@ const Board = () => {
               stroke="#3b4a4b"
               strokeWidth={2}
               cornerRadius={8}
+              onMouseDown={() => clearSelection()}
+              onTap={() => clearSelection()}
             />
             {gridLines}
           </Group>
@@ -372,6 +382,125 @@ const Board = () => {
               />
             ))
           )}
+          {terrains.map((terrain) => {
+            const isSelected =
+              selection?.type === "terrain" && selection.id === terrain.id;
+            const stroke = isSelected ? "#f6c35c" : "#0f1618";
+            const strokeWidth = isSelected ? 3 : 2;
+            if (terrain.type === "circle") {
+              return (
+                <Group
+                  key={terrain.id}
+                  x={terrain.x * PX_PER_INCH}
+                  y={terrain.y * PX_PER_INCH}
+                  rotation={terrain.rotation}
+                  draggable
+                  onTap={(event) => {
+                    event.cancelBubble = true;
+                    setSelection({ type: "terrain", id: terrain.id });
+                  }}
+                  onDragStart={(event) => {
+                    event.cancelBubble = true;
+                    setSelection({ type: "terrain", id: terrain.id });
+                    setIsObjectDragging(true);
+                  }}
+                  onDragMove={(event) => {
+                    event.cancelBubble = true;
+                  }}
+                  onDragEnd={(event) => {
+                    event.cancelBubble = true;
+                    const node = event.target;
+                    setTerrainPosition(
+                      terrain.id,
+                      node.x() / PX_PER_INCH,
+                      node.y() / PX_PER_INCH
+                    );
+                    setIsObjectDragging(false);
+                  }}
+                >
+                  <Circle
+                    radius={terrain.radiusInches * PX_PER_INCH}
+                    fill={terrain.color}
+                    opacity={0.35}
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                  />
+                  {terrain.label && (
+                    <Text
+                      text={terrain.label}
+                      fill="#0f1618"
+                      fontSize={14}
+                      fontStyle="600"
+                      align="center"
+                      verticalAlign="middle"
+                      width={terrain.radiusInches * PX_PER_INCH * 2}
+                      height={terrain.radiusInches * PX_PER_INCH * 2}
+                      offsetX={terrain.radiusInches * PX_PER_INCH}
+                      offsetY={terrain.radiusInches * PX_PER_INCH}
+                    />
+                  )}
+                </Group>
+              );
+            }
+
+            return (
+              <Group
+                key={terrain.id}
+                x={terrain.x * PX_PER_INCH}
+                y={terrain.y * PX_PER_INCH}
+                rotation={terrain.rotation}
+                draggable
+                onTap={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "terrain", id: terrain.id });
+                }}
+                onDragStart={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "terrain", id: terrain.id });
+                  setIsObjectDragging(true);
+                }}
+                onDragMove={(event) => {
+                  event.cancelBubble = true;
+                }}
+                onDragEnd={(event) => {
+                  event.cancelBubble = true;
+                  const node = event.target;
+                  setTerrainPosition(
+                    terrain.id,
+                    node.x() / PX_PER_INCH,
+                    node.y() / PX_PER_INCH
+                  );
+                  setIsObjectDragging(false);
+                }}
+              >
+                <Rect
+                  width={terrain.widthInches * PX_PER_INCH}
+                  height={terrain.heightInches * PX_PER_INCH}
+                  fill={terrain.color}
+                  opacity={0.35}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                  offsetX={(terrain.widthInches * PX_PER_INCH) / 2}
+                  offsetY={(terrain.heightInches * PX_PER_INCH) / 2}
+                  cornerRadius={6}
+                />
+                {terrain.label && (
+                  <Text
+                    text={terrain.label}
+                    fill="#0f1618"
+                    fontSize={14}
+                    fontStyle="600"
+                    align="center"
+                    verticalAlign="middle"
+                    width={terrain.widthInches * PX_PER_INCH}
+                    height={terrain.heightInches * PX_PER_INCH}
+                    offsetX={(terrain.widthInches * PX_PER_INCH) / 2}
+                    offsetY={(terrain.heightInches * PX_PER_INCH) / 2}
+                  />
+                )}
+              </Group>
+            );
+          })}
           {measurementActive && pointA && pointB && measurementStart && (
             <Group>
               <Line
@@ -572,11 +701,12 @@ const Board = () => {
                 draggable
                 onTap={(event) => {
                   event.cancelBubble = true;
-                  setSelectedUnitId(unit.id);
+                  setSelection({ type: "unit", id: unit.id });
                 }}
                 onDragStart={(event) => {
                   event.cancelBubble = true;
-                  setSelectedUnitId(unit.id);
+                  setSelection({ type: "unit", id: unit.id });
+                  setIsObjectDragging(true);
                   setDragState({
                     unitId: unit.id,
                     origin: { x: unit.x, y: unit.y },
@@ -603,13 +733,22 @@ const Board = () => {
                   const nextY = node.y() / PX_PER_INCH;
                   setUnitPosition(unit.id, nextX, nextY);
                   setDragState(null);
+                  setIsObjectDragging(false);
                 }}
               >
                 <Circle
                   radius={radiusPx}
                   fill={unit.color}
-                  stroke={unit.id === selectedUnitId ? "#f6c35c" : "#0f1618"}
-                  strokeWidth={unit.id === selectedUnitId ? 4 : 2}
+                  stroke={
+                    selection?.type === "unit" && selection.id === unit.id
+                      ? "#f6c35c"
+                      : "#0f1618"
+                  }
+                  strokeWidth={
+                    selection?.type === "unit" && selection.id === unit.id
+                      ? 4
+                      : 2
+                  }
                   hitStrokeWidth={12}
                 />
                 <Text

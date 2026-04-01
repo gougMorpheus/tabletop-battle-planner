@@ -138,6 +138,10 @@ body {
   padding: 0 14px;
 }
 
+.fab__chip--danger {
+  background: #b83b3b;
+}
+
 .fab__chip:active {
   transform: scale(0.97);
 }
