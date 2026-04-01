@@ -18,6 +18,10 @@ const App = () => {
   const addRange = useUnitsStore((state) => state.addRange);
   const removeRange = useUnitsStore((state) => state.removeRange);
   const updateUnit = useUnitsStore((state) => state.updateUnit);
+  const commitPlannedMoves = useUnitsStore(
+    (state) => state.commitPlannedMoves
+  );
+  const resetPlannedMoves = useUnitsStore((state) => state.resetPlannedMoves);
   const measurementActive = useMeasurementStore((state) => state.isActive);
   const startMeasurement = useMeasurementStore(
     (state) => state.startMeasurement
@@ -48,6 +52,10 @@ const App = () => {
   const [unitNameInput, setUnitNameInput] = useState("");
   const [unitInitialsInput, setUnitInitialsInput] = useState("");
   const [unitColorInput, setUnitColorInput] = useState("");
+
+  const hasPlannedMoves = units.some(
+    (unit) => unit.plannedX !== undefined || unit.plannedY !== undefined
+  );
 
   const handleAddUnit = () => {
     addUnit({ x: boardWidthIn / 2, y: boardHeightIn / 2 });
@@ -434,6 +442,22 @@ const App = () => {
           disabled={!selectedUnit}
         >
           {isInspectorOpen ? "Hide Inspector" : "Inspector"}
+        </button>
+        <button
+          className="fab__button"
+          type="button"
+          onClick={commitPlannedMoves}
+          disabled={!hasPlannedMoves}
+        >
+          Commit Moves
+        </button>
+        <button
+          className="fab__button"
+          type="button"
+          onClick={resetPlannedMoves}
+          disabled={!hasPlannedMoves}
+        >
+          Reset Moves
         </button>
       </div>
       {selectedUnit && isInspectorOpen && (

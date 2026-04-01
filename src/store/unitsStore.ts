@@ -4,6 +4,8 @@ export type Unit = {
   id: string;
   x: number;
   y: number;
+  plannedX?: number;
+  plannedY?: number;
   name: string;
   initials: string;
   modelCount: number;
@@ -22,6 +24,10 @@ type UnitsState = {
   duplicateUnit: (unitId: string) => void;
   deleteUnit: (unitId: string) => void;
   setUnitPosition: (unitId: string, x: number, y: number) => void;
+  setPlannedPosition: (unitId: string, x: number, y: number) => void;
+  clearPlannedPosition: (unitId: string) => void;
+  commitPlannedMoves: () => void;
+  resetPlannedMoves: () => void;
   addRange: (unitId: string, rangeInches: number) => void;
   removeRange: (unitId: string, rangeIndex: number) => void;
   updateUnit: (unitId: string, updates: Partial<Unit>) => void;
@@ -91,6 +97,42 @@ export const useUnitsStore = create<UnitsState>((set, get) => ({
       units: state.units.map((unit) =>
         unit.id === unitId ? { ...unit, x, y } : unit
       ),
+    })),
+  setPlannedPosition: (unitId, x, y) =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.id === unitId ? { ...unit, plannedX: x, plannedY: y } : unit
+      ),
+    })),
+  clearPlannedPosition: (unitId) =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.id === unitId
+          ? { ...unit, plannedX: undefined, plannedY: undefined }
+          : unit
+      ),
+    })),
+  commitPlannedMoves: () =>
+    set((state) => ({
+      units: state.units.map((unit) =>
+        unit.plannedX !== undefined && unit.plannedY !== undefined
+          ? {
+              ...unit,
+              x: unit.plannedX,
+              y: unit.plannedY,
+              plannedX: undefined,
+              plannedY: undefined,
+            }
+          : unit
+      ),
+    })),
+  resetPlannedMoves: () =>
+    set((state) => ({
+      units: state.units.map((unit) => ({
+        ...unit,
+        plannedX: undefined,
+        plannedY: undefined,
+      })),
     })),
   addRange: (unitId, rangeInches) =>
     set((state) => ({

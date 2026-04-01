@@ -94,7 +94,7 @@ const Board = () => {
   const setPosition = useBoardStore((state) => state.setPosition);
 
   const units = useUnitsStore((state) => state.units);
-  const setUnitPosition = useUnitsStore((state) => state.setUnitPosition);
+  const setPlannedPosition = useUnitsStore((state) => state.setPlannedPosition);
   const terrains = useTerrainStore((state) => state.terrains);
   const setTerrainPosition = useTerrainStore(
     (state) => state.setTerrainPosition
@@ -320,6 +320,10 @@ const Board = () => {
     return closest?.unit ?? null;
   };
 
+  const activeDragUnit = dragState
+    ? units.find((unit) => unit.id === dragState.unitId) ?? null
+    : null;
+
   const dragDistance = dragState
     ? Math.hypot(
         dragState.current.x - dragState.origin.x,
@@ -380,8 +384,7 @@ const Board = () => {
     ? getLabelFromStart(
         dragState.origin,
         dragState.current,
-        (units.find((unit) => unit.id === dragState.unitId)
-          ?.iconDiameterInches ?? 0) / 2
+        (activeDragUnit?.iconDiameterInches ?? 0) / 2
       )
     : null;
 
@@ -426,24 +429,29 @@ const Board = () => {
               strokeWidth={2}
               cornerRadius={8}
               onMouseDown={() => clearSelection()}
+              onClick={() => clearSelection()}
               onTap={() => clearSelection()}
             />
             {gridLines}
           </Group>
-          {units.map((unit) =>
-            unit.ranges.map((range, index) => (
+          {units.map((unit) => {
+            const displayX =
+              unit.plannedX !== undefined ? unit.plannedX : unit.x;
+            const displayY =
+              unit.plannedY !== undefined ? unit.plannedY : unit.y;
+            return unit.ranges.map((range, index) => (
               <Circle
                 key={`${unit.id}-range-${index}`}
-                x={unit.x * PX_PER_INCH}
-                y={unit.y * PX_PER_INCH}
+                x={displayX * PX_PER_INCH}
+                y={displayY * PX_PER_INCH}
                 radius={(range + unit.iconDiameterInches / 2) * PX_PER_INCH}
                 stroke="#4aa7a1"
                 strokeWidth={2}
                 dash={[10, 8]}
                 listening={false}
               />
-            ))
-          )}
+            ));
+          })}
           {terrains.map((terrain) => {
             const isSelected =
               selection?.type === "terrain" && selection.id === terrain.id;
@@ -458,6 +466,10 @@ const Board = () => {
                   rotation={terrain.rotation}
                   draggable
                   onTap={(event) => {
+                    event.cancelBubble = true;
+                    setSelection({ type: "terrain", id: terrain.id });
+                  }}
+                  onClick={(event) => {
                     event.cancelBubble = true;
                     setSelection({ type: "terrain", id: terrain.id });
                   }}
@@ -513,6 +525,10 @@ const Board = () => {
                 rotation={terrain.rotation}
                 draggable
                 onTap={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "terrain", id: terrain.id });
+                }}
+                onClick={(event) => {
                   event.cancelBubble = true;
                   setSelection({ type: "terrain", id: terrain.id });
                 }}
@@ -716,51 +732,114 @@ const Board = () => {
               </Group>
             </Group>
           )}
-          {dragState && (
+          {(dragState || units.some((unit) => unit.plannedX !== undefined)) && (
             <Group>
-              <Line
-                points={[
-                  dragState.origin.x * PX_PER_INCH,
-                  dragState.origin.y * PX_PER_INCH,
-                  dragState.current.x * PX_PER_INCH,
-                  dragState.current.y * PX_PER_INCH,
-                ]}
-                stroke="#f6c35c"
-                strokeWidth={3}
-                dash={[10, 6]}
-              />
-              {movementLabelPosition && (
-                <Label
-                  x={movementLabelPosition.x * PX_PER_INCH}
-                  y={movementLabelPosition.y * PX_PER_INCH}
-                >
-                <Tag
-                  fill="#0f1618"
-                  cornerRadius={6}
-                  stroke="#f6c35c"
-                  strokeWidth={1}
-                />
-                <Text
-                  text={`${dragDistance.toFixed(1)}"`}
-                  fill="#f6c35c"
-                  fontSize={16}
-                  padding={6}
-                  fontStyle="bold"
-                />
-                </Label>
+              {dragState && (
+                <>
+                  <Line
+                    points={[
+                      dragState.origin.x * PX_PER_INCH,
+                      dragState.origin.y * PX_PER_INCH,
+                      dragState.current.x * PX_PER_INCH,
+                      dragState.current.y * PX_PER_INCH,
+                    ]}
+                    stroke="#f6c35c"
+                    strokeWidth={3}
+                    dash={[10, 6]}
+                  />
+                  {movementLabelPosition && (
+                    <Label
+                      x={movementLabelPosition.x * PX_PER_INCH}
+                      y={movementLabelPosition.y * PX_PER_INCH}
+                    >
+                      <Tag
+                        fill="#0f1618"
+                        cornerRadius={6}
+                        stroke="#f6c35c"
+                        strokeWidth={1}
+                      />
+                      <Text
+                        text={`${dragDistance.toFixed(1)}"`}
+                        fill="#f6c35c"
+                        fontSize={16}
+                        padding={6}
+                        fontStyle="bold"
+                      />
+                    </Label>
+                  )}
+                </>
               )}
+              {units
+                .filter(
+                  (unit) =>
+                    unit.plannedX !== undefined && unit.plannedY !== undefined
+                )
+                .map((unit) => {
+                  const plannedX = unit.plannedX ?? unit.x;
+                  const plannedY = unit.plannedY ?? unit.y;
+                  const labelPosition = getLabelFromStart(
+                    { x: unit.x, y: unit.y },
+                    { x: plannedX, y: plannedY },
+                    unit.iconDiameterInches / 2
+                  );
+                  const distance = Math.hypot(
+                    plannedX - unit.x,
+                    plannedY - unit.y
+                  );
+                  return (
+                    <Group key={`${unit.id}-planned-line`}>
+                      <Line
+                        points={[
+                          unit.x * PX_PER_INCH,
+                          unit.y * PX_PER_INCH,
+                          plannedX * PX_PER_INCH,
+                          plannedY * PX_PER_INCH,
+                        ]}
+                        stroke="#f6c35c"
+                        strokeWidth={3}
+                        dash={[10, 6]}
+                      />
+                      <Label
+                        x={labelPosition.x * PX_PER_INCH}
+                        y={labelPosition.y * PX_PER_INCH}
+                      >
+                        <Tag
+                          fill="#0f1618"
+                          cornerRadius={6}
+                          stroke="#f6c35c"
+                          strokeWidth={1}
+                        />
+                        <Text
+                          text={`${distance.toFixed(1)}"`}
+                          fill="#f6c35c"
+                          fontSize={16}
+                          padding={6}
+                          fontStyle="bold"
+                        />
+                      </Label>
+                    </Group>
+                  );
+                })}
             </Group>
           )}
           {units.map((unit) => {
             const radiusPx = (unit.iconDiameterInches / 2) * PX_PER_INCH;
+            const displayX =
+              unit.plannedX !== undefined ? unit.plannedX : unit.x;
+            const displayY =
+              unit.plannedY !== undefined ? unit.plannedY : unit.y;
             const woundSummary = buildWoundSummary(unit.currentModelWounds);
             return (
               <Group
                 key={unit.id}
-                x={unit.x * PX_PER_INCH}
-                y={unit.y * PX_PER_INCH}
+                x={displayX * PX_PER_INCH}
+                y={displayY * PX_PER_INCH}
                 draggable
                 onTap={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "unit", id: unit.id });
+                }}
+                onClick={(event) => {
                   event.cancelBubble = true;
                   setSelection({ type: "unit", id: unit.id });
                 }}
@@ -771,7 +850,10 @@ const Board = () => {
                   setDragState({
                     unitId: unit.id,
                     origin: { x: unit.x, y: unit.y },
-                    current: { x: unit.x, y: unit.y },
+                    current: {
+                      x: unit.plannedX !== undefined ? unit.plannedX : unit.x,
+                      y: unit.plannedY !== undefined ? unit.plannedY : unit.y,
+                    },
                   });
                 }}
                 onDragMove={(event) => {
@@ -786,13 +868,10 @@ const Board = () => {
                       ? { ...state, current: next }
                       : state
                   );
+                  setPlannedPosition(unit.id, next.x, next.y);
                 }}
                 onDragEnd={(event) => {
                   event.cancelBubble = true;
-                  const node = event.target;
-                  const nextX = node.x() / PX_PER_INCH;
-                  const nextY = node.y() / PX_PER_INCH;
-                  setUnitPosition(unit.id, nextX, nextY);
                   setDragState(null);
                   setIsObjectDragging(false);
                 }}
