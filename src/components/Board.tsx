@@ -20,6 +20,8 @@ const MIN_SCALE = 0.25;
 const MAX_SCALE = 3;
 const DOUBLE_TAP_DELAY_MS = 300;
 const SNAP_DISTANCE_IN = 0.75;
+const MEASURE_A_COLOR = "#7bd389";
+const MEASURE_B_COLOR = "#f6c35c";
 
 const clampScale = (scale: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
@@ -306,6 +308,11 @@ const Board = () => {
     };
   })();
 
+  const pointAVisual =
+    measurementActive && pointA && measurementStart && snappedUnit
+      ? measurementStart
+      : pointA;
+
   const measurementDistance = (() => {
     if (!measurementActive || !pointA || !pointB) {
       return 0;
@@ -357,7 +364,7 @@ const Board = () => {
                 key={`${unit.id}-range-${index}`}
                 x={unit.x * PX_PER_INCH}
                 y={unit.y * PX_PER_INCH}
-                radius={range * PX_PER_INCH}
+                radius={(range + unit.iconDiameterInches / 2) * PX_PER_INCH}
                 stroke="#4aa7a1"
                 strokeWidth={2}
                 dash={[10, 8]}
@@ -377,48 +384,79 @@ const Board = () => {
                 stroke="#7bd389"
                 strokeWidth={3}
               />
-              <Circle
-                x={pointA.x * PX_PER_INCH}
-                y={pointA.y * PX_PER_INCH}
-                radius={6}
-                fill="#7bd389"
-                stroke="#0f1618"
-                strokeWidth={2}
-                draggable
-                onDragStart={(event) => {
-                  event.cancelBubble = true;
-                  setIsHandleDragging(true);
-                }}
-                onDragMove={(event) => {
-                  event.cancelBubble = true;
-                  const node = event.target;
-                  const next = {
-                    x: node.x() / PX_PER_INCH,
-                    y: node.y() / PX_PER_INCH,
-                  };
-                  const snap = findSnapUnit(next);
-                  if (snap) {
-                    setPointA({ x: snap.x, y: snap.y }, snap.id);
-                  } else {
-                    setPointA(next, null);
+              {snappedUnit && (
+                <Circle
+                  x={snappedUnit.x * PX_PER_INCH}
+                  y={snappedUnit.y * PX_PER_INCH}
+                  radius={
+                    (snappedUnit.iconDiameterInches / 2) * PX_PER_INCH + 4
                   }
-                }}
-                onDragEnd={(event) => {
-                  event.cancelBubble = true;
-                  const node = event.target;
-                  const next = {
-                    x: node.x() / PX_PER_INCH,
-                    y: node.y() / PX_PER_INCH,
-                  };
-                  const snap = findSnapUnit(next);
-                  if (snap) {
-                    setPointA({ x: snap.x, y: snap.y }, snap.id);
-                  } else {
-                    setPointA(next, null);
-                  }
-                  setIsHandleDragging(false);
-                }}
-              />
+                  stroke={MEASURE_A_COLOR}
+                  strokeWidth={2}
+                  dash={[6, 6]}
+                  listening={false}
+                />
+              )}
+              {pointAVisual && (
+                <Group
+                  x={pointAVisual.x * PX_PER_INCH}
+                  y={pointAVisual.y * PX_PER_INCH}
+                  draggable
+                  onDragStart={(event) => {
+                    event.cancelBubble = true;
+                    setIsHandleDragging(true);
+                  }}
+                  onDragMove={(event) => {
+                    event.cancelBubble = true;
+                    const node = event.target;
+                    const next = {
+                      x: node.x() / PX_PER_INCH,
+                      y: node.y() / PX_PER_INCH,
+                    };
+                    const snap = findSnapUnit(next);
+                    if (snap) {
+                      setPointA({ x: snap.x, y: snap.y }, snap.id);
+                    } else {
+                      setPointA(next, null);
+                    }
+                  }}
+                  onDragEnd={(event) => {
+                    event.cancelBubble = true;
+                    const node = event.target;
+                    const next = {
+                      x: node.x() / PX_PER_INCH,
+                      y: node.y() / PX_PER_INCH,
+                    };
+                    const snap = findSnapUnit(next);
+                    if (snap) {
+                      setPointA({ x: snap.x, y: snap.y }, snap.id);
+                    } else {
+                      setPointA(next, null);
+                    }
+                    setIsHandleDragging(false);
+                  }}
+                >
+                  <Circle
+                    radius={10}
+                    fill="#0f1618"
+                    stroke={MEASURE_A_COLOR}
+                    strokeWidth={3}
+                    hitStrokeWidth={10}
+                  />
+                  <Text
+                    text="A"
+                    fill={MEASURE_A_COLOR}
+                    fontSize={12}
+                    fontStyle="700"
+                    align="center"
+                    verticalAlign="middle"
+                    width={20}
+                    height={20}
+                    offsetX={10}
+                    offsetY={10}
+                  />
+                </Group>
+              )}
               <Label
                 x={((measurementStart.x + pointB.x) / 2) * PX_PER_INCH}
                 y={((measurementStart.y + pointB.y) / 2) * PX_PER_INCH}
@@ -437,13 +475,9 @@ const Board = () => {
                   fontStyle="bold"
                 />
               </Label>
-              <Circle
+              <Group
                 x={pointB.x * PX_PER_INCH}
                 y={pointB.y * PX_PER_INCH}
-                radius={6}
-                fill="#7bd389"
-                stroke="#0f1618"
-                strokeWidth={2}
                 draggable
                 onDragStart={(event) => {
                   event.cancelBubble = true;
@@ -466,7 +500,27 @@ const Board = () => {
                   });
                   setIsHandleDragging(false);
                 }}
-              />
+              >
+                <Circle
+                  radius={9}
+                  fill={MEASURE_B_COLOR}
+                  stroke="#0f1618"
+                  strokeWidth={2}
+                  hitStrokeWidth={10}
+                />
+                <Text
+                  text="B"
+                  fill="#0f1618"
+                  fontSize={12}
+                  fontStyle="700"
+                  align="center"
+                  verticalAlign="middle"
+                  width={18}
+                  height={18}
+                  offsetX={9}
+                  offsetY={9}
+                />
+              </Group>
             </Group>
           )}
           {dragState && (
