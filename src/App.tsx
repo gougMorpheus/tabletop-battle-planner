@@ -75,7 +75,7 @@ const App = () => {
       : null;
   const [rangeInput, setRangeInput] = useState("");
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [isTrackerExpanded, setIsTrackerExpanded] = useState(false);
+  const [isTerrainInspectorOpen, setIsTerrainInspectorOpen] = useState(false);
   const [modelCountInput, setModelCountInput] = useState("");
   const [woundsPerModelInput, setWoundsPerModelInput] = useState("");
   const [iconDiameterInput, setIconDiameterInput] = useState("");
@@ -205,16 +205,21 @@ const App = () => {
     setIsInspectorOpen((open) => !open);
   };
 
-  const handleTrackerToggle = () => {
-    setIsTrackerExpanded((open) => !open);
-  };
-
   const refreshScenes = async () => {
     setLoadingScenes(true);
     const list = await listScenes();
     setScenes(list);
     setLoadingScenes(false);
   };
+
+  useEffect(() => {
+    if (!selectedUnit) {
+      setIsInspectorOpen(false);
+    }
+    if (!selectedTerrain) {
+      setIsTerrainInspectorOpen(false);
+    }
+  }, [selectedTerrain, selectedUnit]);
 
   const handleOpenScenes = () => {
     setIsScenesOpen(true);
@@ -375,9 +380,6 @@ const App = () => {
     <div className="app">
       <header className="top-bar">
         <div className="top-bar__title">Tabletop Battle Planner</div>
-        <button className="top-bar__button" type="button" onClick={toggleGrid}>
-          {showGrid ? "Grid: On" : "Grid: Off"}
-        </button>
       </header>
       <main className="board-shell">
         <Board />
@@ -388,274 +390,312 @@ const App = () => {
           accept="image/*"
           onChange={handleBackgroundChange}
         />
-        <div className="tool-dock">
-          <button className="tool-dock__button" type="button" onClick={handleAddUnit}>
-            + Unit
-          </button>
-          <button className="tool-dock__button" type="button" onClick={handleAddRectTerrain}>
-            + Rect
-          </button>
-          <button className="tool-dock__button" type="button" onClick={handleAddCircleTerrain}>
-            + Circle
-          </button>
-          <button className="tool-dock__button" type="button" onClick={handleNewMeasurement}>
-            Measure
-          </button>
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={stopActiveMeasurement}
-            disabled={!activeMeasurementId}
-          >
-            Stop Measure
-          </button>
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={clearMeasurements}
-            disabled={measurements.length === 0}
-          >
-            Clear Measures
-          </button>
-          <button className="tool-dock__button" type="button" onClick={() => setIsDiceOpen(true)}>
-            Dice
-          </button>
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={handleOpenScenes}
-          >
-            Scenes
-          </button>
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={handleSelectBackground}
-          >
-            {backgroundImageUrl ? "Replace BG" : "Add BG"}
-          </button>
-          {backgroundImageUrl && (
+        <div className="tracker-overlay">
+          <div className="tracker-overlay__row">
+            <label>
+              Round
+              <input
+                type="number"
+                inputMode="numeric"
+                value={battleRound}
+                onChange={(event) => setBattleRound(Number(event.target.value))}
+              />
+            </label>
+            <div className="tracker-overlay__phase">
+              <span>Phase</span>
+              <div className="tracker-overlay__phase-controls">
+                <button type="button" onClick={prevPhase}>
+                  â—€
+                </button>
+                <div>{phase}</div>
+                <button type="button" onClick={nextPhase}>
+                  â–¶
+                </button>
+              </div>
+            </div>
             <button
-              className="tool-dock__button tool-dock__button--ghost"
+              className="tracker-overlay__active"
               type="button"
-              onClick={handleClearBackground}
+              onClick={toggleActivePlayer}
             >
-              Remove BG
+              Active: {activePlayer}
             </button>
-          )}
-          {selectedUnit && (
-            <>
+          </div>
+          <div className="tracker-overlay__row tracker-overlay__row--stats">
+            <div className="tracker-overlay__stat">
+              <span>A VP</span>
+              <div className="tracker-overlay__controls">
+                <button type="button" onClick={() => adjustPlayer("A", "vp", -1)}>
+                  -
+                </button>
+                <div>{playerA.vp}</div>
+                <button type="button" onClick={() => adjustPlayer("A", "vp", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="tracker-overlay__stat">
+              <span>A CP</span>
+              <div className="tracker-overlay__controls">
+                <button type="button" onClick={() => adjustPlayer("A", "cp", -1)}>
+                  -
+                </button>
+                <div>{playerA.cp}</div>
+                <button type="button" onClick={() => adjustPlayer("A", "cp", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="tracker-overlay__stat">
+              <span>B VP</span>
+              <div className="tracker-overlay__controls">
+                <button type="button" onClick={() => adjustPlayer("B", "vp", -1)}>
+                  -
+                </button>
+                <div>{playerB.vp}</div>
+                <button type="button" onClick={() => adjustPlayer("B", "vp", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="tracker-overlay__stat">
+              <span>B CP</span>
+              <div className="tracker-overlay__controls">
+                <button type="button" onClick={() => adjustPlayer("B", "cp", -1)}>
+                  -
+                </button>
+                <div>{playerB.cp}</div>
+                <button type="button" onClick={() => adjustPlayer("B", "cp", 1)}>
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="side-menu">
+          <div className="side-menu__section">
+            <div className="side-menu__title">Unit</div>
+            <button className="side-menu__button" type="button" onClick={handleAddUnit}>
+              Add Unit
+            </button>
+            {selectedUnit && (
+              <>
+                <button
+                  className="side-menu__button"
+                  type="button"
+                  onClick={handleInspectorToggle}
+                >
+                  {isInspectorOpen ? "Hide Inspector" : "Inspector"}
+                </button>
+                <div className="side-menu__row">
+                  <button
+                    className="side-menu__button side-menu__button--ghost"
+                    type="button"
+                    onClick={() => handleAddRange(6)}
+                  >
+                    +6"
+                  </button>
+                  <button
+                    className="side-menu__button side-menu__button--ghost"
+                    type="button"
+                    onClick={() => handleAddRange(12)}
+                  >
+                    +12"
+                  </button>
+                </div>
+                <div className="side-menu__row">
+                  <input
+                    className="side-menu__input"
+                    type="number"
+                    inputMode="decimal"
+                    placeholder='Range'
+                    value={rangeInput}
+                    onChange={(event) => setRangeInput(event.target.value)}
+                  />
+                  <button
+                    className="side-menu__button side-menu__button--ghost"
+                    type="button"
+                    onClick={handleRangeSubmit}
+                  >
+                    Add
+                  </button>
+                </div>
+                {selectedUnit.ranges.length > 0 && (
+                  <div className="side-menu__list">
+                    {selectedUnit.ranges.map((range, index) => (
+                      <div
+                        key={`${selectedUnit.id}-range-${index}`}
+                        className="side-menu__list-item"
+                      >
+                        <span>{range}"</span>
+                        <button
+                          className="side-menu__link"
+                          type="button"
+                          onClick={() => removeRange(selectedUnit.id, index)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={handleDuplicateUnit}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={handleDeleteUnit}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+            <div className="side-menu__row">
               <button
-                className="tool-dock__button tool-dock__button--ghost"
+                className="side-menu__button side-menu__button--ghost"
                 type="button"
-                onClick={() => handleAddRange(6)}
+                onClick={commitPlannedMoves}
+                disabled={!hasPlannedMoves}
               >
-                + Range 6
+                Commit
               </button>
               <button
-                className="tool-dock__button tool-dock__button--ghost"
+                className="side-menu__button side-menu__button--ghost"
                 type="button"
-                onClick={() => handleAddRange(12)}
+                onClick={resetPlannedMoves}
+                disabled={!hasPlannedMoves}
               >
-                + Range 12
+                Reset
               </button>
+            </div>
+          </div>
+          <div className="side-menu__section">
+            <div className="side-menu__title">Terrain</div>
+            <button
+              className="side-menu__button"
+              type="button"
+              onClick={handleAddRectTerrain}
+            >
+              Add Rect
+            </button>
+            <button
+              className="side-menu__button"
+              type="button"
+              onClick={handleAddCircleTerrain}
+            >
+              Add Circle
+            </button>
+            {selectedTerrain && (
+              <>
+                <button
+                  className="side-menu__button"
+                  type="button"
+                  onClick={() =>
+                    setIsTerrainInspectorOpen((open) => !open)
+                  }
+                >
+                  {isTerrainInspectorOpen ? "Hide Inspector" : "Inspector"}
+                </button>
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={() => duplicateTerrain(selectedTerrain.id)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={() => {
+                    deleteTerrain(selectedTerrain.id);
+                    clearSelection();
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+          <div className="side-menu__section">
+            <div className="side-menu__title">Measure</div>
+            <button className="side-menu__button" type="button" onClick={handleNewMeasurement}>
+              New Measurement
+            </button>
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={stopActiveMeasurement}
+              disabled={!activeMeasurementId}
+            >
+              Stop Active
+            </button>
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={clearMeasurements}
+              disabled={measurements.length === 0}
+            >
+              Clear All
+            </button>
+            {measurements.length > 0 && (
+              <div className="side-menu__list">
+                {measurements.map((measurement, index) => (
+                  <div key={measurement.id} className="side-menu__list-item">
+                    <span>Measure {index + 1}</span>
+                    <button
+                      className="side-menu__link"
+                      type="button"
+                      onClick={() => removeMeasurement(measurement.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="side-menu__section">
+            <div className="side-menu__title">Dice</div>
+            <button className="side-menu__button" type="button" onClick={() => setIsDiceOpen(true)}>
+              Open Dice
+            </button>
+          </div>
+          <div className="side-menu__section">
+            <div className="side-menu__title">Settings</div>
+            <button className="side-menu__button" type="button" onClick={toggleGrid}>
+              {showGrid ? "Grid On" : "Grid Off"}
+            </button>
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={handleSelectBackground}
+            >
+              {backgroundImageUrl ? "Replace Background" : "Add Background"}
+            </button>
+            {backgroundImageUrl && (
               <button
-                className="tool-dock__button tool-dock__button--ghost"
+                className="side-menu__button side-menu__button--ghost"
                 type="button"
-                onClick={handleInspectorToggle}
+                onClick={handleClearBackground}
               >
-                {isInspectorOpen ? "Hide Unit" : "Unit Inspector"}
+                Remove Background
               </button>
-              <button
-                className="tool-dock__button tool-dock__button--ghost"
-                type="button"
-                onClick={handleDuplicateUnit}
-              >
-                Duplicate Unit
-              </button>
-              <button
-                className="tool-dock__button tool-dock__button--ghost"
-                type="button"
-                onClick={handleDeleteUnit}
-              >
-                Delete Unit
-              </button>
-            </>
-          )}
-          {selectedTerrain && (
-            <>
-              <button
-                className="tool-dock__button tool-dock__button--ghost"
-                type="button"
-                onClick={() => duplicateTerrain(selectedTerrain.id)}
-              >
-                Duplicate Terrain
-              </button>
-              <button
-                className="tool-dock__button tool-dock__button--ghost"
-                type="button"
-                onClick={() => {
-                  deleteTerrain(selectedTerrain.id);
-                  clearSelection();
-                }}
-              >
-                Delete Terrain
-              </button>
-            </>
-          )}
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={commitPlannedMoves}
-            disabled={!hasPlannedMoves}
-          >
-            Commit
-          </button>
-          <button
-            className="tool-dock__button tool-dock__button--ghost"
-            type="button"
-            onClick={resetPlannedMoves}
-            disabled={!hasPlannedMoves}
-          >
-            Reset
-          </button>
+            )}
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={handleOpenScenes}
+            >
+              Scenes
+            </button>
+          </div>
         </div>
       </main>
-      <div className="tracker tracker--compact">
-        <div className="tracker__compact">
-          <button className="tracker__expand" type="button" onClick={handleTrackerToggle}>
-            {isTrackerExpanded ? "Hide" : "Expand"}
-          </button>
-          <div className="tracker__compact-row">
-            <span>R{battleRound}</span>
-            <span>{phase}</span>
-            <span>Active: {activePlayer}</span>
-          </div>
-          <div className="tracker__compact-row">
-            <span>A VP {playerA.vp}</span>
-            <span>A CP {playerA.cp}</span>
-            <span>B VP {playerB.vp}</span>
-            <span>B CP {playerB.cp}</span>
-          </div>
-        </div>
-        {isTrackerExpanded && (
-          <div className="tracker__expanded">
-            <div className="tracker__header">
-              <div className="tracker__title">Game Tracker</div>
-              <button
-                className="tracker__chip"
-                type="button"
-                onClick={toggleActivePlayer}
-              >
-                Active: Player {activePlayer}
-              </button>
-            </div>
-            <div className="tracker__row">
-              <div className="tracker__round">
-                <span>Round</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={battleRound}
-                  onChange={(event) => setBattleRound(Number(event.target.value))}
-                />
-              </div>
-              <div className="tracker__phase">
-                <span>Phase</span>
-                <div className="tracker__phase-controls">
-                  <button type="button" onClick={prevPhase}>
-                    ◀
-                  </button>
-                  <div>{phase}</div>
-                  <button type="button" onClick={nextPhase}>
-                    ▶
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="tracker__players">
-              <div className="tracker__player">
-                <div className="tracker__player-title">Player A</div>
-                <div className="tracker__stat">
-                  <span>VP</span>
-                  <div className="tracker__controls">
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("A", "vp", -1)}
-                    >
-                      -
-                    </button>
-                    <div>{playerA.vp}</div>
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("A", "vp", 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="tracker__stat">
-                  <span>CP</span>
-                  <div className="tracker__controls">
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("A", "cp", -1)}
-                    >
-                      -
-                    </button>
-                    <div>{playerA.cp}</div>
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("A", "cp", 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="tracker__player">
-                <div className="tracker__player-title">Player B</div>
-                <div className="tracker__stat">
-                  <span>VP</span>
-                  <div className="tracker__controls">
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("B", "vp", -1)}
-                    >
-                      -
-                    </button>
-                    <div>{playerB.vp}</div>
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("B", "vp", 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className="tracker__stat">
-                  <span>CP</span>
-                  <div className="tracker__controls">
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("B", "cp", -1)}
-                    >
-                      -
-                    </button>
-                    <div>{playerB.cp}</div>
-                    <button
-                      type="button"
-                      onClick={() => adjustPlayer("B", "cp", 1)}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
       {selectedUnit && isInspectorOpen && (
         <div className="inspector inspector--floating">
           <div className="inspector__header">
@@ -809,7 +849,7 @@ const App = () => {
           </div>
         </div>
       )}
-      {selectedTerrain && (
+      {selectedTerrain && isTerrainInspectorOpen && (
         <div className="inspector inspector--floating">
           <div className="inspector__header">
             <div className="inspector__title">Terrain Inspector</div>
@@ -965,7 +1005,7 @@ const App = () => {
                 </button>
               </div>
               {loadingScenes ? (
-                <div className="scenes__empty">Loading scenes…</div>
+                <div className="scenes__empty">Loading scenesâ€¦</div>
               ) : scenes.length === 0 ? (
                 <div className="scenes__empty">No saved scenes yet.</div>
               ) : (
@@ -1093,7 +1133,7 @@ const App = () => {
                       <div>Sum: {sum}</div>
                       {section.target !== null && (
                         <div>
-                          Successes: {successes ?? 0} (≥{section.target})
+                          Successes: {successes ?? 0} (â‰¥{section.target})
                         </div>
                       )}
                     </div>
