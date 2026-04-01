@@ -25,6 +25,26 @@ const SNAP_DISTANCE_IN = 0.75;
 const MEASURE_A_COLOR = "#7bd389";
 const MEASURE_B_COLOR = "#f6c35c";
 
+const getLabelFromStart = (
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  startRadiusIn: number
+) => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) {
+    return start;
+  }
+  const ux = dx / length;
+  const uy = dy / length;
+  const padding = 0.35;
+  return {
+    x: start.x - ux * (startRadiusIn + padding),
+    y: start.y - uy * (startRadiusIn + padding),
+  };
+};
+
 const buildWoundSummary = (wounds: number[]) => {
   const counts = new Map<number, number>();
   wounds.forEach((value) => {
@@ -350,8 +370,35 @@ const Board = () => {
     return Math.hypot(pointB.x - pointA.x, pointB.y - pointA.y);
   })();
 
+  const activeDistanceLabel = dragState
+    ? `${dragDistance.toFixed(1)}"`
+    : measurementActive && pointA && pointB
+      ? `${measurementDistance.toFixed(1)}"`
+      : null;
+
+  const movementLabelPosition = dragState
+    ? getLabelFromStart(
+        dragState.origin,
+        dragState.current,
+        (units.find((unit) => unit.id === dragState.unitId)
+          ?.iconDiameterInches ?? 0) / 2
+      )
+    : null;
+
+  const measurementLabelPosition =
+    measurementActive && measurementStart && pointB
+      ? getLabelFromStart(
+          measurementStart,
+          pointB,
+          snappedUnit ? snappedUnit.iconDiameterInches / 2 : 0
+        )
+      : null;
+
   return (
     <div className="board-canvas" ref={containerRef}>
+      {activeDistanceLabel && (
+        <div className="board-distance">{activeDistanceLabel}</div>
+      )}
       <Stage
         ref={stageRef}
         width={containerSize.width}
@@ -601,10 +648,11 @@ const Board = () => {
                   />
                 </Group>
               )}
-              <Label
-                x={((measurementStart.x + pointB.x) / 2) * PX_PER_INCH}
-                y={((measurementStart.y + pointB.y) / 2) * PX_PER_INCH}
-              >
+              {measurementLabelPosition && (
+                <Label
+                  x={measurementLabelPosition.x * PX_PER_INCH}
+                  y={measurementLabelPosition.y * PX_PER_INCH}
+                >
                 <Tag
                   fill="#0f1618"
                   cornerRadius={6}
@@ -618,7 +666,8 @@ const Board = () => {
                   padding={6}
                   fontStyle="bold"
                 />
-              </Label>
+                </Label>
+              )}
               <Group
                 x={pointB.x * PX_PER_INCH}
                 y={pointB.y * PX_PER_INCH}
@@ -680,16 +729,11 @@ const Board = () => {
                 strokeWidth={3}
                 dash={[10, 6]}
               />
-              <Label
-                x={
-                  ((dragState.origin.x + dragState.current.x) / 2) *
-                  PX_PER_INCH
-                }
-                y={
-                  ((dragState.origin.y + dragState.current.y) / 2) *
-                  PX_PER_INCH
-                }
-              >
+              {movementLabelPosition && (
+                <Label
+                  x={movementLabelPosition.x * PX_PER_INCH}
+                  y={movementLabelPosition.y * PX_PER_INCH}
+                >
                 <Tag
                   fill="#0f1618"
                   cornerRadius={6}
@@ -703,7 +747,8 @@ const Board = () => {
                   padding={6}
                   fontStyle="bold"
                 />
-              </Label>
+                </Label>
+              )}
             </Group>
           )}
           {units.map((unit) => {
