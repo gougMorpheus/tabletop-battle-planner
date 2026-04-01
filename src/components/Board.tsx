@@ -17,6 +17,7 @@ import { useUnitsStore } from "../store/unitsStore";
 import { useMeasurementStore } from "../store/measurementStore";
 import { useTerrainStore } from "../store/terrainStore";
 import { useSelectionStore } from "../store/selectionStore";
+import { useUiStore } from "../store/uiStore";
 
 const PX_PER_INCH = 20;
 const MIN_SCALE = 0.25;
@@ -106,9 +107,15 @@ const Board = () => {
   const selection = useSelectionStore((state) => state.selection);
   const setSelection = useSelectionStore((state) => state.setSelection);
   const clearSelection = useSelectionStore((state) => state.clearSelection);
+  const setUnitInspectorOpen = useUiStore(
+    (state) => state.setUnitInspectorOpen
+  );
   const measurements = useMeasurementStore((state) => state.measurements);
   const activeMeasurementId = useMeasurementStore(
     (state) => state.activeMeasurementId
+  );
+  const setActiveMeasurementId = useMeasurementStore(
+    (state) => state.setActiveMeasurementId
   );
   const setPointA = useMeasurementStore((state) => state.setActivePointA);
   const setPointB = useMeasurementStore((state) => state.setActivePointB);
@@ -678,8 +685,17 @@ const Board = () => {
                     measurement.pointB.x * PX_PER_INCH,
                     measurement.pointB.y * PX_PER_INCH,
                   ]}
-                  stroke="#7bd389"
-                  strokeWidth={3}
+                  stroke={isActive ? "#8be0a0" : "#7bd389"}
+                  strokeWidth={isActive ? 4 : 3}
+                  hitStrokeWidth={14}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
+                  onTap={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
                 />
                 {snappedUnit && (
                   <Circle
@@ -698,6 +714,14 @@ const Board = () => {
                   x={start.x * PX_PER_INCH}
                   y={start.y * PX_PER_INCH}
                   draggable={isActive}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
+                  onTap={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
                   onDragStart={(event) => {
                     if (!isActive) {
                       return;
@@ -783,6 +807,14 @@ const Board = () => {
                   x={measurement.pointB.x * PX_PER_INCH}
                   y={measurement.pointB.y * PX_PER_INCH}
                   draggable={isActive}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
+                  onTap={(event) => {
+                    event.cancelBubble = true;
+                    setActiveMeasurementId(measurement.id);
+                  }}
                   onDragStart={(event) => {
                     if (!isActive) {
                       return;
@@ -947,6 +979,16 @@ const Board = () => {
                 onClick={(event) => {
                   event.cancelBubble = true;
                   setSelection({ type: "unit", id: unit.id });
+                }}
+                onDblClick={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "unit", id: unit.id });
+                  setUnitInspectorOpen(true);
+                }}
+                onDblTap={(event) => {
+                  event.cancelBubble = true;
+                  setSelection({ type: "unit", id: unit.id });
+                  setUnitInspectorOpen(true);
                 }}
                 onDragStart={(event) => {
                   event.cancelBubble = true;

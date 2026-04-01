@@ -151,6 +151,11 @@ body {
   font-weight: 600;
 }
 
+.side-menu__link--active {
+  color: #1f2d2f;
+  font-weight: 700;
+}
+
 .tracker-overlay {
   background: rgba(249, 246, 241, 0.95);
   border-radius: 12px;

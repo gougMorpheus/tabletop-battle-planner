@@ -13,6 +13,7 @@ type DiceState = {
   setTarget: (index: number, target: number | null) => void;
   rollSection: (index: number) => void;
   rollAll: () => void;
+  resetAll: () => void;
 };
 
 const createSection = (): DiceSection => ({
@@ -72,10 +73,6 @@ export const useDiceStore = create<DiceState>((set) => ({
         };
       }
       const results = rollDice(parsed.count);
-      const successes =
-        section.target !== null
-          ? results.filter((value) => value >= section.target!).length
-          : null;
       return {
         sections: state.sections.map((item, idx) =>
           idx === index
@@ -89,28 +86,32 @@ export const useDiceStore = create<DiceState>((set) => ({
       };
     }),
   rollAll: () =>
-    set((state) => {
-      return {
-        sections: state.sections.map((section) => {
-          const parsed = parseCount(section.countInput);
-          if (parsed.error) {
-            return {
-              ...section,
-              results: [],
-              error: parsed.error,
-            };
-          }
-          const results = rollDice(parsed.count);
-          const successes =
-            section.target !== null
-              ? results.filter((value) => value >= section.target!).length
-              : null;
+    set((state) => ({
+      sections: state.sections.map((section) => {
+        const parsed = parseCount(section.countInput);
+        if (parsed.error) {
           return {
             ...section,
-            results,
-            error: null,
+            results: [],
+            error: parsed.error,
           };
-        }),
-      };
-    }),
+        }
+        const results = rollDice(parsed.count);
+        return {
+          ...section,
+          results,
+          error: null,
+        };
+      }),
+    })),
+  resetAll: () =>
+    set((state) => ({
+      sections: state.sections.map((section) => ({
+        ...section,
+        countInput: "",
+        target: null,
+        results: [],
+        error: null,
+      })),
+    })),
 }));

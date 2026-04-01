@@ -45,11 +45,13 @@ const buildInitials = (name: string) => {
 
 const buildDefaultUnit = (index: number, draft?: UnitDraft): Unit => {
   const name = draft?.name ?? `Unit ${index}`;
-  const modelCount = draft?.modelCount ?? 1;
-  const woundsPerModel = draft?.woundsPerModel ?? 1;
+  const modelCount = draft?.modelCount ?? 0;
+  const woundsPerModel = draft?.woundsPerModel ?? 0;
   const currentModelWounds =
     draft?.currentModelWounds ??
-    Array.from({ length: modelCount }, () => woundsPerModel);
+    (modelCount > 0 && woundsPerModel > 0
+      ? Array.from({ length: modelCount }, () => woundsPerModel)
+      : []);
 
   return {
     id: crypto.randomUUID(),

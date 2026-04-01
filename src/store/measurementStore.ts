@@ -17,6 +17,7 @@ type MeasurementState = {
   activeMeasurementId: string | null;
   startMeasurement: (pointA: MeasurementPoint, pointB: MeasurementPoint) => void;
   stopActiveMeasurement: () => void;
+  setActiveMeasurementId: (measurementId: string | null) => void;
   setActivePointA: (pointA: MeasurementPoint, snappedUnitId: string | null) => void;
   setActivePointB: (pointB: MeasurementPoint) => void;
   setMeasurements: (measurements: Measurement[]) => void;
@@ -41,6 +42,8 @@ export const useMeasurementStore = create<MeasurementState>((set) => ({
       };
     }),
   stopActiveMeasurement: () => set({ activeMeasurementId: null }),
+  setActiveMeasurementId: (measurementId) =>
+    set({ activeMeasurementId: measurementId }),
   setActivePointA: (pointA, snappedUnitId) =>
     set((state) => {
       if (!state.activeMeasurementId) {

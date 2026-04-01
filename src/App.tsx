@@ -7,6 +7,7 @@ import { useTerrainStore } from "./store/terrainStore";
 import { useSelectionStore } from "./store/selectionStore";
 import { useDiceStore } from "./store/diceStore";
 import { useGameTrackerStore } from "./store/gameTrackerStore";
+import { useUiStore } from "./store/uiStore";
 import {
   SceneRecord,
   deleteScene,
@@ -46,8 +47,8 @@ const App = () => {
   const startMeasurement = useMeasurementStore(
     (state) => state.startMeasurement
   );
-  const stopActiveMeasurement = useMeasurementStore(
-    (state) => state.stopActiveMeasurement
+  const setActiveMeasurementId = useMeasurementStore(
+    (state) => state.setActiveMeasurementId
   );
   const removeMeasurement = useMeasurementStore(
     (state) => state.removeMeasurement
@@ -74,7 +75,10 @@ const App = () => {
       ? terrains.find((terrain) => terrain.id === selection.id) ?? null
       : null;
   const [rangeInput, setRangeInput] = useState("");
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const unitInspectorOpen = useUiStore((state) => state.unitInspectorOpen);
+  const setUnitInspectorOpen = useUiStore(
+    (state) => state.setUnitInspectorOpen
+  );
   const [isTerrainInspectorOpen, setIsTerrainInspectorOpen] = useState(false);
   const [modelCountInput, setModelCountInput] = useState("");
   const [woundsPerModelInput, setWoundsPerModelInput] = useState("");
@@ -94,7 +98,7 @@ const App = () => {
   const setDiceCountInput = useDiceStore((state) => state.setCountInput);
   const setDiceTarget = useDiceStore((state) => state.setTarget);
   const rollSection = useDiceStore((state) => state.rollSection);
-  const rollAll = useDiceStore((state) => state.rollAll);
+  const resetAllDice = useDiceStore((state) => state.resetAll);
   const playerA = useGameTrackerStore((state) => state.playerA);
   const playerB = useGameTrackerStore((state) => state.playerB);
   const battleRound = useGameTrackerStore((state) => state.battleRound);
@@ -127,7 +131,7 @@ const App = () => {
     if (selectedUnit) {
       deleteUnit(selectedUnit.id);
       clearSelection();
-      setIsInspectorOpen(false);
+      setUnitInspectorOpen(false);
     }
   };
 
@@ -135,6 +139,13 @@ const App = () => {
     const pointA = { x: boardWidthIn / 2, y: boardHeightIn / 2 };
     const pointB = { x: pointA.x + 6, y: pointA.y };
     startMeasurement(pointA, pointB);
+  };
+
+  const handleDeleteActiveMeasurement = () => {
+    if (!activeMeasurementId) {
+      return;
+    }
+    removeMeasurement(activeMeasurementId);
   };
 
   const handleAddRange = (rangeValue: number) => {
@@ -202,7 +213,7 @@ const App = () => {
     if (!selectedUnit) {
       return;
     }
-    setIsInspectorOpen((open) => !open);
+    setUnitInspectorOpen(!unitInspectorOpen);
   };
 
   const refreshScenes = async () => {
@@ -214,7 +225,7 @@ const App = () => {
 
   useEffect(() => {
     if (!selectedUnit) {
-      setIsInspectorOpen(false);
+      setUnitInspectorOpen(false);
     }
     if (!selectedTerrain) {
       setIsTerrainInspectorOpen(false);
@@ -264,7 +275,7 @@ const App = () => {
     setMeasurements(scene.data.measurements ?? []);
     setTrackerState(scene.data.gameTracker);
     clearSelection();
-    setIsInspectorOpen(false);
+    setUnitInspectorOpen(false);
     setIsScenesOpen(false);
   };
 
@@ -292,21 +303,33 @@ const App = () => {
     updateUnit(selectedUnit.id, updates);
   };
 
-  const handleModelCountChange = (nextCount: number) => {
+  const handleModelCountChange = (
+    nextCount: number,
+    woundsPerModelOverride?: number
+  ) => {
     if (!selectedUnit) {
       return;
     }
     const safeCount = Math.max(1, Math.floor(nextCount));
+    const woundsPerModel =
+      woundsPerModelOverride ??
+      finalizeNumericInput(
+        woundsPerModelInput,
+        selectedUnit.woundsPerModel,
+        1
+      );
     const current = [...selectedUnit.currentModelWounds];
     if (safeCount > current.length) {
       const toAdd = safeCount - current.length;
-      current.push(
-        ...Array.from({ length: toAdd }, () => selectedUnit.woundsPerModel)
-      );
+      current.push(...Array.from({ length: toAdd }, () => woundsPerModel));
     } else if (safeCount < current.length) {
       current.length = safeCount;
     }
-    handleUnitUpdate({ modelCount: safeCount, currentModelWounds: current });
+    handleUnitUpdate({
+      modelCount: safeCount,
+      woundsPerModel,
+      currentModelWounds: current,
+    });
   };
 
   const handleWoundsPerModelChange = (next: number) => {
@@ -405,11 +428,11 @@ const App = () => {
               <span>Phase</span>
               <div className="tracker-overlay__phase-controls">
                 <button type="button" onClick={prevPhase}>
-                  â—€
+                  Prev
                 </button>
                 <div>{phase}</div>
                 <button type="button" onClick={nextPhase}>
-                  â–¶
+                  Next
                 </button>
               </div>
             </div>
@@ -485,7 +508,7 @@ const App = () => {
                   type="button"
                   onClick={handleInspectorToggle}
                 >
-                  {isInspectorOpen ? "Hide Inspector" : "Inspector"}
+                  {unitInspectorOpen ? "Hide Inspector" : "Inspector"}
                 </button>
                 <div className="side-menu__row">
                   <button
@@ -629,10 +652,18 @@ const App = () => {
             <button
               className="side-menu__button side-menu__button--ghost"
               type="button"
-              onClick={stopActiveMeasurement}
+              onClick={() => setActiveMeasurementId(null)}
               disabled={!activeMeasurementId}
             >
-              Stop Active
+              Deselect
+            </button>
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={handleDeleteActiveMeasurement}
+              disabled={!activeMeasurementId}
+            >
+              Delete Selected
             </button>
             <button
               className="side-menu__button side-menu__button--ghost"
@@ -646,7 +677,17 @@ const App = () => {
               <div className="side-menu__list">
                 {measurements.map((measurement, index) => (
                   <div key={measurement.id} className="side-menu__list-item">
-                    <span>Measure {index + 1}</span>
+                    <button
+                      className={
+                        measurement.id === activeMeasurementId
+                          ? "side-menu__link side-menu__link--active"
+                          : "side-menu__link"
+                      }
+                      type="button"
+                      onClick={() => setActiveMeasurementId(measurement.id)}
+                    >
+                      Measure {index + 1}
+                    </button>
                     <button
                       className="side-menu__link"
                       type="button"
@@ -696,14 +737,14 @@ const App = () => {
           </div>
         </div>
       </main>
-      {selectedUnit && isInspectorOpen && (
+      {selectedUnit && unitInspectorOpen && (
         <div className="inspector inspector--floating">
           <div className="inspector__header">
             <div className="inspector__title">Unit Inspector</div>
             <button
               className="inspector__close"
               type="button"
-              onClick={() => setIsInspectorOpen(false)}
+              onClick={() => setUnitInspectorOpen(false)}
             >
               Close
             </button>
@@ -730,27 +771,6 @@ const App = () => {
               />
             </label>
             <label className="inspector__field">
-              <span>Model Count</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={modelCountInput}
-                onChange={(event) => setModelCountInput(event.target.value)}
-                onBlur={() => {
-                  if (!selectedUnit) {
-                    return;
-                  }
-                  const nextValue = finalizeNumericInput(
-                    modelCountInput,
-                    selectedUnit.modelCount,
-                    1
-                  );
-                  handleModelCountChange(nextValue);
-                  setModelCountInput(String(nextValue));
-                }}
-              />
-            </label>
-            <label className="inspector__field">
               <span>Wounds / Model</span>
               <input
                 type="text"
@@ -768,6 +788,36 @@ const App = () => {
                   );
                   handleWoundsPerModelChange(nextValue);
                   setWoundsPerModelInput(String(nextValue));
+                }}
+              />
+            </label>
+            <label className="inspector__field">
+              <span>Model Count</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={modelCountInput}
+                onChange={(event) => setModelCountInput(event.target.value)}
+                onBlur={() => {
+                  if (!selectedUnit) {
+                    return;
+                  }
+                  const nextWounds = finalizeNumericInput(
+                    woundsPerModelInput,
+                    selectedUnit.woundsPerModel,
+                    1
+                  );
+                  if (nextWounds !== selectedUnit.woundsPerModel) {
+                    handleWoundsPerModelChange(nextWounds);
+                    setWoundsPerModelInput(String(nextWounds));
+                  }
+                  const nextValue = finalizeNumericInput(
+                    modelCountInput,
+                    selectedUnit.modelCount,
+                    1
+                  );
+                  handleModelCountChange(nextValue, nextWounds);
+                  setModelCountInput(String(nextValue));
                 }}
               />
             </label>
@@ -1005,7 +1055,7 @@ const App = () => {
                 </button>
               </div>
               {loadingScenes ? (
-                <div className="scenes__empty">Loading scenesâ€¦</div>
+                <div className="scenes__empty">Loading scenes...</div>
               ) : scenes.length === 0 ? (
                 <div className="scenes__empty">No saved scenes yet.</div>
               ) : (
@@ -1050,13 +1100,13 @@ const App = () => {
             <div className="dice__header">
               <div className="dice__title">Dice Roller</div>
               <div className="dice__actions">
-                <button
-                  className="dice__button"
-                  type="button"
-                  onClick={rollAll}
-                >
-                  Reroll All
-                </button>
+              <button
+                className="dice__button"
+                type="button"
+                onClick={resetAllDice}
+              >
+                Reset
+              </button>
                 <button
                   className="dice__button dice__button--ghost"
                   type="button"
@@ -1133,7 +1183,8 @@ const App = () => {
                       <div>Sum: {sum}</div>
                       {section.target !== null && (
                         <div>
-                          Successes: {successes ?? 0} (â‰¥{section.target})
+                          Successes: {successes ?? 0} ({"\u2265"}
+                          {section.target})
                         </div>
                       )}
                     </div>
@@ -1166,159 +1217,6 @@ const App = () => {
                   </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-      )}
-      {selectedUnit && isInspectorOpen && (
-        <div className="inspector">
-          <div className="inspector__header">
-            <div className="inspector__title">Unit Inspector</div>
-            <button
-              className="inspector__close"
-              type="button"
-              onClick={() => setIsInspectorOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          <div className="inspector__content">
-            <label className="inspector__field">
-              <span>Name</span>
-              <input
-                type="text"
-                value={unitNameInput}
-                onChange={(event) => setUnitNameInput(event.target.value)}
-                onBlur={() => handleUnitUpdate({ name: unitNameInput.trim() })}
-              />
-            </label>
-            <label className="inspector__field">
-              <span>Initials</span>
-              <input
-                type="text"
-                value={unitInitialsInput}
-                onChange={(event) => setUnitInitialsInput(event.target.value)}
-                onBlur={() =>
-                  handleUnitUpdate({ initials: unitInitialsInput.trim() })
-                }
-              />
-            </label>
-            <label className="inspector__field">
-              <span>Model Count</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={modelCountInput}
-                onChange={(event) => setModelCountInput(event.target.value)}
-                onBlur={() => {
-                  if (!selectedUnit) {
-                    return;
-                  }
-                  const nextValue = finalizeNumericInput(
-                    modelCountInput,
-                    selectedUnit.modelCount,
-                    1
-                  );
-                  handleModelCountChange(nextValue);
-                  setModelCountInput(String(nextValue));
-                }}
-              />
-            </label>
-            <label className="inspector__field">
-              <span>Wounds / Model</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={woundsPerModelInput}
-                onChange={(event) => setWoundsPerModelInput(event.target.value)}
-                onBlur={() => {
-                  if (!selectedUnit) {
-                    return;
-                  }
-                  const nextValue = finalizeNumericInput(
-                    woundsPerModelInput,
-                    selectedUnit.woundsPerModel,
-                    1
-                  );
-                  handleWoundsPerModelChange(nextValue);
-                  setWoundsPerModelInput(String(nextValue));
-                }}
-              />
-            </label>
-            <label className="inspector__field">
-              <span>Icon Diameter (in)</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={iconDiameterInput}
-                onChange={(event) => setIconDiameterInput(event.target.value)}
-                onBlur={() => {
-                  if (!selectedUnit) {
-                    return;
-                  }
-                  const nextValue = finalizeNumericInput(
-                    iconDiameterInput,
-                    selectedUnit.iconDiameterInches,
-                    0.5
-                  );
-                  handleUnitUpdate({ iconDiameterInches: nextValue });
-                  setIconDiameterInput(String(nextValue));
-                }}
-              />
-            </label>
-            <label className="inspector__field">
-              <span>Color</span>
-              <input
-                type="text"
-                value={unitColorInput}
-                onChange={(event) => setUnitColorInput(event.target.value)}
-                onBlur={() => handleUnitUpdate({ color: unitColorInput.trim() })}
-              />
-            </label>
-            <div className="inspector__stats">
-              <div>Alive: {derivedStats?.alive ?? 0}</div>
-              <div>Dead: {derivedStats?.dead ?? 0}</div>
-              <div>Wounds Remaining: {derivedStats?.remaining ?? 0}</div>
-            </div>
-            <div className="inspector__wounds">
-              {selectedUnit.currentModelWounds.map((wounds, index) => (
-                <label className="inspector__wound" key={index}>
-                  <span>Model {index + 1}</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={woundInputs[index] ?? String(wounds)}
-                    onChange={(event) =>
-                      setWoundInputs((prev) => {
-                        const next = [...prev];
-                        next[index] = event.target.value;
-                        return next;
-                      })
-                    }
-                    onBlur={() => {
-                      if (!selectedUnit) {
-                        return;
-                      }
-                      const fallback = selectedUnit.currentModelWounds[index] ?? 0;
-                      const nextValue = finalizeNumericInput(
-                        woundInputs[index] ?? String(fallback),
-                        fallback,
-                        0
-                      );
-                      const clamped = Math.min(
-                        nextValue,
-                        selectedUnit.woundsPerModel
-                      );
-                      handleModelWoundChange(index, clamped);
-                      setWoundInputs((prev) => {
-                        const next = [...prev];
-                        next[index] = String(clamped);
-                        return next;
-                      });
-                    }}
-                  />
-                </label>
-              ))}
             </div>
           </div>
         </div>
