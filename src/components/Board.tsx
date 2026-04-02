@@ -95,6 +95,13 @@ const Board = () => {
   const backgroundImageUrl = useBoardStore(
     (state) => state.backgroundImageUrl
   );
+  const backgroundFit = useBoardStore((state) => state.backgroundFit);
+  const backgroundScale = useBoardStore((state) => state.backgroundScale);
+  const backgroundOffset = useBoardStore((state) => state.backgroundOffset);
+  const showDeploymentZones = useBoardStore(
+    (state) => state.showDeploymentZones
+  );
+  const deploymentZones = useBoardStore((state) => state.deploymentZones);
   const setView = useBoardStore((state) => state.setView);
   const setPosition = useBoardStore((state) => state.setPosition);
 
@@ -424,16 +431,23 @@ const Board = () => {
     if (!backgroundImage) {
       return null;
     }
-    const scale = Math.min(
-      boardWidthPx / backgroundImage.width,
-      boardHeightPx / backgroundImage.height
-    );
-    const width = backgroundImage.width * scale;
-    const height = backgroundImage.height * scale;
+    const baseScale =
+      backgroundFit === "cover"
+        ? Math.max(
+            boardWidthPx / backgroundImage.width,
+            boardHeightPx / backgroundImage.height
+          )
+        : Math.min(
+            boardWidthPx / backgroundImage.width,
+            boardHeightPx / backgroundImage.height
+          );
+    const nextScale = baseScale * backgroundScale;
+    const width = backgroundImage.width * nextScale;
+    const height = backgroundImage.height * nextScale;
     return {
       image: backgroundImage,
-      x: (boardWidthPx - width) / 2,
-      y: (boardHeightPx - height) / 2,
+      x: (boardWidthPx - width) / 2 + backgroundOffset.x * PX_PER_INCH,
+      y: (boardHeightPx - height) / 2 + backgroundOffset.y * PX_PER_INCH,
       width,
       height,
     };
@@ -499,7 +513,32 @@ const Board = () => {
               />
             )}
             {gridLines}
+            <Line
+              points={[boardWidthPx / 2, 0, boardWidthPx / 2, boardHeightPx]}
+              stroke="rgba(255, 255, 255, 0.22)"
+              strokeWidth={2}
+            />
+            <Line
+              points={[0, boardHeightPx / 2, boardWidthPx, boardHeightPx / 2]}
+              stroke="rgba(255, 255, 255, 0.22)"
+              strokeWidth={2}
+            />
           </Group>
+          {showDeploymentZones &&
+            deploymentZones.map((zone) => (
+              <Rect
+                key={`deployment-${zone.id}`}
+                x={zone.x * PX_PER_INCH}
+                y={zone.y * PX_PER_INCH}
+                width={zone.width * PX_PER_INCH}
+                height={zone.height * PX_PER_INCH}
+                fill={zone.color}
+                opacity={0.18}
+                stroke={zone.color}
+                strokeWidth={2}
+                listening={false}
+              />
+            ))}
           {units.map((unit) => {
             const displayX =
               unit.plannedX !== undefined ? unit.plannedX : unit.x;

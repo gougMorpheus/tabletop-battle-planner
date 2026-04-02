@@ -11,6 +11,19 @@ export type SceneData = {
     position: { x: number; y: number };
     showGrid: boolean;
     backgroundImageUrl: string | null;
+    backgroundFit: "contain" | "cover";
+    backgroundScale: number;
+    backgroundOffset: { x: number; y: number };
+    showDeploymentZones: boolean;
+    deploymentZones: {
+      id: string;
+      label: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+    }[];
   };
   units: Unit[];
   terrain: Terrain[];

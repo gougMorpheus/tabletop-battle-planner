@@ -24,8 +24,27 @@ const App = () => {
   const backgroundImageUrl = useBoardStore(
     (state) => state.backgroundImageUrl
   );
+  const backgroundFit = useBoardStore((state) => state.backgroundFit);
+  const backgroundScale = useBoardStore((state) => state.backgroundScale);
+  const backgroundOffset = useBoardStore((state) => state.backgroundOffset);
+  const showDeploymentZones = useBoardStore(
+    (state) => state.showDeploymentZones
+  );
+  const deploymentZones = useBoardStore((state) => state.deploymentZones);
   const setBackgroundImageUrl = useBoardStore(
     (state) => state.setBackgroundImageUrl
+  );
+  const setBackgroundFit = useBoardStore((state) => state.setBackgroundFit);
+  const setBackgroundScale = useBoardStore((state) => state.setBackgroundScale);
+  const setBackgroundOffset = useBoardStore(
+    (state) => state.setBackgroundOffset
+  );
+  const setBoardSize = useBoardStore((state) => state.setBoardSize);
+  const toggleDeploymentZones = useBoardStore(
+    (state) => state.toggleDeploymentZones
+  );
+  const updateDeploymentZone = useBoardStore(
+    (state) => state.updateDeploymentZone
   );
   const setBoardConfig = useBoardStore((state) => state.setBoardConfig);
   const addUnit = useUnitsStore((state) => state.addUnit);
@@ -87,6 +106,11 @@ const App = () => {
   const [unitNameInput, setUnitNameInput] = useState("");
   const [unitInitialsInput, setUnitInitialsInput] = useState("");
   const [unitColorInput, setUnitColorInput] = useState("");
+  const [boardWidthInput, setBoardWidthInput] = useState("");
+  const [boardHeightInput, setBoardHeightInput] = useState("");
+  const [backgroundScaleInput, setBackgroundScaleInput] = useState("");
+  const [backgroundOffsetXInput, setBackgroundOffsetXInput] = useState("");
+  const [backgroundOffsetYInput, setBackgroundOffsetYInput] = useState("");
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const lastImageUrlRef = useRef<string | null>(null);
   const [isDiceOpen, setIsDiceOpen] = useState(false);
@@ -139,13 +163,6 @@ const App = () => {
     const pointA = { x: boardWidthIn / 2, y: boardHeightIn / 2 };
     const pointB = { x: pointA.x + 6, y: pointA.y };
     startMeasurement(pointA, pointB);
-  };
-
-  const handleDeleteActiveMeasurement = () => {
-    if (!activeMeasurementId) {
-      return;
-    }
-    removeMeasurement(activeMeasurementId);
   };
 
   const handleAddRange = (rangeValue: number) => {
@@ -252,6 +269,11 @@ const App = () => {
         position: boardState.position,
         showGrid: boardState.showGrid,
         backgroundImageUrl: boardState.backgroundImageUrl,
+        backgroundFit: boardState.backgroundFit,
+        backgroundScale: boardState.backgroundScale,
+        backgroundOffset: boardState.backgroundOffset,
+        showDeploymentZones: boardState.showDeploymentZones,
+        deploymentZones: boardState.deploymentZones,
       },
       units: unitState.units,
       terrain: terrainState.terrains,
@@ -269,7 +291,25 @@ const App = () => {
   };
 
   const handleLoadScene = async (scene: SceneRecord) => {
-    setBoardConfig(scene.data.board);
+    const boardState = useBoardStore.getState();
+    setBoardConfig({
+      widthIn: scene.data.board.widthIn,
+      heightIn: scene.data.board.heightIn,
+      scale: scene.data.board.scale,
+      position: scene.data.board.position,
+      showGrid: scene.data.board.showGrid,
+      backgroundImageUrl: scene.data.board.backgroundImageUrl,
+      backgroundFit: scene.data.board.backgroundFit ?? boardState.backgroundFit,
+      backgroundScale:
+        scene.data.board.backgroundScale ?? boardState.backgroundScale,
+      backgroundOffset:
+        scene.data.board.backgroundOffset ?? boardState.backgroundOffset,
+      showDeploymentZones:
+        scene.data.board.showDeploymentZones ??
+        boardState.showDeploymentZones,
+      deploymentZones:
+        scene.data.board.deploymentZones ?? boardState.deploymentZones,
+    });
     setUnits(scene.data.units);
     setTerrains(scene.data.terrain);
     setMeasurements(scene.data.measurements ?? []);
@@ -310,13 +350,13 @@ const App = () => {
     if (!selectedUnit) {
       return;
     }
-    const safeCount = Math.max(1, Math.floor(nextCount));
+    const safeCount = Math.max(0, Math.floor(nextCount));
     const woundsPerModel =
       woundsPerModelOverride ??
       finalizeNumericInput(
         woundsPerModelInput,
         selectedUnit.woundsPerModel,
-        1
+        0
       );
     const current = [...selectedUnit.currentModelWounds];
     if (safeCount > current.length) {
@@ -336,7 +376,7 @@ const App = () => {
     if (!selectedUnit) {
       return;
     }
-    const safeValue = Math.max(1, Math.floor(next));
+    const safeValue = Math.max(0, Math.floor(next));
     const current = [...selectedUnit.currentModelWounds].map((value) =>
       Math.min(value, safeValue)
     );
@@ -386,6 +426,17 @@ const App = () => {
     setUnitColorInput(selectedUnit.color);
   }, [selectedUnit]);
 
+  useEffect(() => {
+    setBoardWidthInput(String(boardWidthIn));
+    setBoardHeightInput(String(boardHeightIn));
+  }, [boardHeightIn, boardWidthIn]);
+
+  useEffect(() => {
+    setBackgroundScaleInput(String(backgroundScale));
+    setBackgroundOffsetXInput(String(backgroundOffset.x));
+    setBackgroundOffsetYInput(String(backgroundOffset.y));
+  }, [backgroundOffset.x, backgroundOffset.y, backgroundScale]);
+
   const derivedStats = selectedUnit
     ? {
         alive: selectedUnit.currentModelWounds.filter((wounds) => wounds > 0)
@@ -398,6 +449,8 @@ const App = () => {
         ),
       }
     : null;
+
+  const colorPresets = ["#b83b3b", "#3b7db8", "#4f9d69", "#6d6f73"];
 
   return (
     <div className="app">
@@ -415,15 +468,24 @@ const App = () => {
         />
         <div className="tracker-overlay">
           <div className="tracker-overlay__row">
-            <label>
-              Round
-              <input
-                type="number"
-                inputMode="numeric"
-                value={battleRound}
-                onChange={(event) => setBattleRound(Number(event.target.value))}
-              />
-            </label>
+            <div className="tracker-overlay__phase">
+              <span>Round</span>
+              <div className="tracker-overlay__phase-controls">
+                <button
+                  type="button"
+                  onClick={() => setBattleRound(Math.max(1, battleRound - 1))}
+                >
+                  Prev
+                </button>
+                <div>{battleRound}</div>
+                <button
+                  type="button"
+                  onClick={() => setBattleRound(battleRound + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
             <div className="tracker-overlay__phase">
               <span>Phase</span>
               <div className="tracker-overlay__phase-controls">
@@ -510,22 +572,6 @@ const App = () => {
                 >
                   {unitInspectorOpen ? "Hide Inspector" : "Inspector"}
                 </button>
-                <div className="side-menu__row">
-                  <button
-                    className="side-menu__button side-menu__button--ghost"
-                    type="button"
-                    onClick={() => handleAddRange(6)}
-                  >
-                    +6"
-                  </button>
-                  <button
-                    className="side-menu__button side-menu__button--ghost"
-                    type="button"
-                    onClick={() => handleAddRange(12)}
-                  >
-                    +12"
-                  </button>
-                </div>
                 <div className="side-menu__row">
                   <input
                     className="side-menu__input"
@@ -652,22 +698,6 @@ const App = () => {
             <button
               className="side-menu__button side-menu__button--ghost"
               type="button"
-              onClick={() => setActiveMeasurementId(null)}
-              disabled={!activeMeasurementId}
-            >
-              Deselect
-            </button>
-            <button
-              className="side-menu__button side-menu__button--ghost"
-              type="button"
-              onClick={handleDeleteActiveMeasurement}
-              disabled={!activeMeasurementId}
-            >
-              Delete Selected
-            </button>
-            <button
-              className="side-menu__button side-menu__button--ghost"
-              type="button"
               onClick={clearMeasurements}
               disabled={measurements.length === 0}
             >
@@ -708,6 +738,45 @@ const App = () => {
           </div>
           <div className="side-menu__section">
             <div className="side-menu__title">Settings</div>
+            <div className="side-menu__field-group">
+              <div className="side-menu__label">Board Size (in)</div>
+              <div className="side-menu__row">
+                <input
+                  className="side-menu__input"
+                  type="text"
+                  inputMode="decimal"
+                  value={boardWidthInput}
+                  onChange={(event) => setBoardWidthInput(event.target.value)}
+                  onBlur={() => {
+                    const nextWidth = finalizeNumericInput(
+                      boardWidthInput,
+                      boardWidthIn,
+                      1
+                    );
+                    setBoardSize(nextWidth, boardHeightIn);
+                    setBoardWidthInput(String(nextWidth));
+                  }}
+                  placeholder="Width"
+                />
+                <input
+                  className="side-menu__input"
+                  type="text"
+                  inputMode="decimal"
+                  value={boardHeightInput}
+                  onChange={(event) => setBoardHeightInput(event.target.value)}
+                  onBlur={() => {
+                    const nextHeight = finalizeNumericInput(
+                      boardHeightInput,
+                      boardHeightIn,
+                      1
+                    );
+                    setBoardSize(boardWidthIn, nextHeight);
+                    setBoardHeightInput(String(nextHeight));
+                  }}
+                  placeholder="Height"
+                />
+              </div>
+            </div>
             <button className="side-menu__button" type="button" onClick={toggleGrid}>
               {showGrid ? "Grid On" : "Grid Off"}
             </button>
@@ -719,14 +788,173 @@ const App = () => {
               {backgroundImageUrl ? "Replace Background" : "Add Background"}
             </button>
             {backgroundImageUrl && (
-              <button
-                className="side-menu__button side-menu__button--ghost"
-                type="button"
-                onClick={handleClearBackground}
-              >
-                Remove Background
-              </button>
+              <>
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={handleClearBackground}
+                >
+                  Remove Background
+                </button>
+                <div className="side-menu__field-group">
+                  <div className="side-menu__label">Background Fit</div>
+                  <select
+                    className="side-menu__select"
+                    value={backgroundFit}
+                    onChange={(event) =>
+                      setBackgroundFit(event.target.value as "contain" | "cover")
+                    }
+                  >
+                    <option value="contain">Contain</option>
+                    <option value="cover">Cover</option>
+                  </select>
+                </div>
+                <div className="side-menu__field-group">
+                  <div className="side-menu__label">Background Scale</div>
+                  <input
+                    className="side-menu__input"
+                    type="text"
+                    inputMode="decimal"
+                    value={backgroundScaleInput}
+                    onChange={(event) =>
+                      setBackgroundScaleInput(event.target.value)
+                    }
+                    onBlur={() => {
+                      const nextScale = finalizeNumericInput(
+                        backgroundScaleInput,
+                        backgroundScale,
+                        0.25
+                      );
+                      setBackgroundScale(nextScale);
+                      setBackgroundScaleInput(String(nextScale));
+                    }}
+                  />
+                </div>
+                <div className="side-menu__field-group">
+                  <div className="side-menu__label">Background Offset (in)</div>
+                  <div className="side-menu__row">
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={backgroundOffsetXInput}
+                      onChange={(event) =>
+                        setBackgroundOffsetXInput(event.target.value)
+                      }
+                      onBlur={() => {
+                        const nextX = finalizeNumericInput(
+                          backgroundOffsetXInput,
+                          backgroundOffset.x,
+                          -9999
+                        );
+                        setBackgroundOffset({ x: nextX, y: backgroundOffset.y });
+                        setBackgroundOffsetXInput(String(nextX));
+                      }}
+                      placeholder="X"
+                    />
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={backgroundOffsetYInput}
+                      onChange={(event) =>
+                        setBackgroundOffsetYInput(event.target.value)
+                      }
+                      onBlur={() => {
+                        const nextY = finalizeNumericInput(
+                          backgroundOffsetYInput,
+                          backgroundOffset.y,
+                          -9999
+                        );
+                        setBackgroundOffset({ x: backgroundOffset.x, y: nextY });
+                        setBackgroundOffsetYInput(String(nextY));
+                      }}
+                      placeholder="Y"
+                    />
+                  </div>
+                </div>
+              </>
             )}
+            <div className="side-menu__field-group">
+              <button
+                className="side-menu__button"
+                type="button"
+                onClick={toggleDeploymentZones}
+              >
+                {showDeploymentZones ? "Hide Deployment" : "Show Deployment"}
+              </button>
+            </div>
+            {showDeploymentZones &&
+              deploymentZones.map((zone) => (
+                <div key={zone.id} className="side-menu__field-group">
+                  <div className="side-menu__label">{zone.label}</div>
+                  <div className="side-menu__row">
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={zone.x}
+                      onChange={(event) =>
+                        updateDeploymentZone(zone.id, {
+                          x: Number(event.target.value) || 0,
+                        })
+                      }
+                      placeholder="X"
+                    />
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={zone.y}
+                      onChange={(event) =>
+                        updateDeploymentZone(zone.id, {
+                          y: Number(event.target.value) || 0,
+                        })
+                      }
+                      placeholder="Y"
+                    />
+                  </div>
+                  <div className="side-menu__row">
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={zone.width}
+                      onChange={(event) =>
+                        updateDeploymentZone(zone.id, {
+                          width: Math.max(0.5, Number(event.target.value) || 0),
+                        })
+                      }
+                      placeholder="W"
+                    />
+                    <input
+                      className="side-menu__input"
+                      type="text"
+                      inputMode="decimal"
+                      value={zone.height}
+                      onChange={(event) =>
+                        updateDeploymentZone(zone.id, {
+                          height: Math.max(0.5, Number(event.target.value) || 0),
+                        })
+                      }
+                      placeholder="H"
+                    />
+                  </div>
+                  <div className="side-menu__row side-menu__row--colors">
+                    {colorPresets.map((color) => (
+                      <button
+                        key={`${zone.id}-${color}`}
+                        className="color-swatch"
+                        type="button"
+                        style={{ backgroundColor: color }}
+                        onClick={() =>
+                          updateDeploymentZone(zone.id, { color })
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             <button
               className="side-menu__button side-menu__button--ghost"
               type="button"
@@ -784,7 +1012,7 @@ const App = () => {
                   const nextValue = finalizeNumericInput(
                     woundsPerModelInput,
                     selectedUnit.woundsPerModel,
-                    1
+                    0
                   );
                   handleWoundsPerModelChange(nextValue);
                   setWoundsPerModelInput(String(nextValue));
@@ -805,7 +1033,7 @@ const App = () => {
                   const nextWounds = finalizeNumericInput(
                     woundsPerModelInput,
                     selectedUnit.woundsPerModel,
-                    1
+                    0
                   );
                   if (nextWounds !== selectedUnit.woundsPerModel) {
                     handleWoundsPerModelChange(nextWounds);
@@ -814,7 +1042,7 @@ const App = () => {
                   const nextValue = finalizeNumericInput(
                     modelCountInput,
                     selectedUnit.modelCount,
-                    1
+                    0
                   );
                   handleModelCountChange(nextValue, nextWounds);
                   setModelCountInput(String(nextValue));
@@ -851,6 +1079,20 @@ const App = () => {
                 onBlur={() => handleUnitUpdate({ color: unitColorInput.trim() })}
               />
             </label>
+            <div className="inspector__row inspector__row--colors">
+              {colorPresets.map((color) => (
+                <button
+                  key={`unit-${color}`}
+                  className="color-swatch"
+                  type="button"
+                  style={{ backgroundColor: color }}
+                  onClick={() => {
+                    setUnitColorInput(color);
+                    handleUnitUpdate({ color });
+                  }}
+                />
+              ))}
+            </div>
             <div className="inspector__stats">
               <div>Alive: {derivedStats?.alive ?? 0}</div>
               <div>Dead: {derivedStats?.dead ?? 0}</div>
@@ -936,6 +1178,19 @@ const App = () => {
                 }
               />
             </label>
+            <div className="inspector__row inspector__row--colors">
+              {colorPresets.map((color) => (
+                <button
+                  key={`terrain-${color}`}
+                  className="color-swatch"
+                  type="button"
+                  style={{ backgroundColor: color }}
+                  onClick={() =>
+                    updateTerrain(selectedTerrain.id, { color })
+                  }
+                />
+              ))}
+            </div>
             <label className="inspector__field">
               <span>Rotation</span>
               <input

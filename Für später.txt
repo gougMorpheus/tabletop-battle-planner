@@ -1,0 +1,21 @@
+Für später:
+- Möglichkeit heatcircles bei range (von- bis farblich hinterlegt)
+- Objekte mit pinch drehen
+- hintergrundbild beim laden in der größe skalieren.
+- die range cirle prsets brauchts echt nicht
+- vielleicht noch eine Verbesserung: statt große ICONS für einheiten vielleicht doch lieber bunch von kleineren icons. die modelle müssen nicht einzeln bewegt werden, aber ich glaube es wirkt besser, wenn man 5 kleinere icons in einem größeren kreis sieht, als nur den größeren kreis
+- deployment zone sollte anzeigbar sein
+- farb presets überall wo man farbe vergibt bzw vergeben kann min 2-4 Optionen. rot, grün, blau, grau
+- es sollte jeweils eine stärkere Linie geben, die das board horizontal und vertikal halbiert
+- die eingabe sollte über alles vereinheitlicht werden von 1,0 und 1.0 in nur 1.0
+
+- die buttons sind recht klein und für touch nicht optimal zu bedienen
+- die runden anzeige ist eine numerische eingabe, aber einfach weiter und zurück wäre besser
+- das menu rechts ist jetzt viel besser, aber es sind immer noch context abhängige Elemente immer aktiv.
+- die größe des board sollte eingebbar sein
+- es sollte generell einen undo button geben für jegliche Veränderung,die man auf dem board macht
+- bei mearuse braucht es "deselect" und "delete select" nicht
+- grid toggle ist nicht notwendig. immer grid reicht.
+- new scene fehlt
+- bei den einheiten sollte es "Notes" geben
+- side menüs toggle

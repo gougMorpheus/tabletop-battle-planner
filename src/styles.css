@@ -112,7 +112,8 @@ body {
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 6px 8px;
+  min-height: 32px;
+  padding: 8px 10px;
   width: 100%;
 }
 
@@ -125,8 +126,39 @@ body {
   border: 1px solid #d0c7bb;
   border-radius: 8px;
   font-size: 0.75rem;
-  padding: 6px 8px;
+  padding: 7px 8px;
   width: 100%;
+}
+
+.side-menu__select {
+  border: 1px solid #d0c7bb;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  padding: 7px 8px;
+  width: 100%;
+}
+
+.side-menu__field-group {
+  display: grid;
+  gap: 6px;
+}
+
+.side-menu__label {
+  color: #4a5a5c;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.side-menu__row--colors {
+  gap: 8px;
+}
+
+.color-swatch {
+  border: 1px solid rgba(15, 22, 24, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  height: 28px;
+  width: 28px;
 }
 
 .side-menu__list {
@@ -692,6 +724,10 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.inspector__row--colors {
+  gap: 8px;
 }
 
 .inspector__button {
