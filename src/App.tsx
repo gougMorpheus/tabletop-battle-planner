@@ -119,6 +119,15 @@ const App = () => {
   const [sceneNameInput, setSceneNameInput] = useState("");
   const [scenes, setScenes] = useState<SceneRecord[]>([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
+  const [isSideMenuCollapsed, setIsSideMenuCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    unit: true,
+    terrain: false,
+    measure: false,
+    dice: false,
+    settings: false,
+  });
+  const [isTrackerCollapsed, setIsTrackerCollapsed] = useState(false);
   const diceSections = useDiceStore((state) => state.sections);
   const setDiceCountInput = useDiceStore((state) => state.setCountInput);
   const setDiceTarget = useDiceStore((state) => state.setTarget);
@@ -487,6 +496,9 @@ const App = () => {
 
   const colorPresets = ["#b83b3b", "#3b7db8", "#4f9d69", "#6d6f73"];
   const formatDecimal = (value: number) => value.toFixed(1);
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <div className="app">
@@ -502,105 +514,177 @@ const App = () => {
           accept="image/*"
           onChange={handleBackgroundChange}
         />
-        <div className="tracker-overlay">
-          <div className="tracker-overlay__row">
-            <div className="tracker-overlay__phase">
-              <span>Round</span>
-              <div className="tracker-overlay__phase-controls">
-                <button
-                  type="button"
-                  onClick={() => setBattleRound(Math.max(1, battleRound - 1))}
-                >
-                  Prev
-                </button>
-                <div>{battleRound}</div>
-                <button
-                  type="button"
-                  onClick={() => setBattleRound(battleRound + 1)}
-                >
-                  Next
-                </button>
-              </div>
+        {isTrackerCollapsed ? (
+          <div className="tracker-overlay tracker-overlay--collapsed">
+            <div className="tracker-overlay__compact">
+              <div>R{battleRound}</div>
+              <div>{phase}</div>
+              <div>Active {activePlayer}</div>
             </div>
-            <div className="tracker-overlay__phase">
-              <span>Phase</span>
-              <div className="tracker-overlay__phase-controls">
-                <button type="button" onClick={prevPhase}>
-                  Prev
-                </button>
-                <div>{phase}</div>
-                <button type="button" onClick={nextPhase}>
-                  Next
-                </button>
+            <button
+              className="tracker-overlay__toggle"
+              type="button"
+              onClick={() => setIsTrackerCollapsed(false)}
+            >
+              Expand
+            </button>
+          </div>
+        ) : (
+          <div className="tracker-overlay">
+            <div className="tracker-overlay__row">
+              <div className="tracker-overlay__phase">
+                <span>Round</span>
+                <div className="tracker-overlay__phase-controls">
+                  <button
+                    type="button"
+                    onClick={() => setBattleRound(Math.max(1, battleRound - 1))}
+                  >
+                    Prev
+                  </button>
+                  <div>{battleRound}</div>
+                  <button
+                    type="button"
+                    onClick={() => setBattleRound(battleRound + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+              <div className="tracker-overlay__phase">
+                <span>Phase</span>
+                <div className="tracker-overlay__phase-controls">
+                  <button type="button" onClick={prevPhase}>
+                    Prev
+                  </button>
+                  <div>{phase}</div>
+                  <button type="button" onClick={nextPhase}>
+                    Next
+                  </button>
+                </div>
+              </div>
+              <button
+                className="tracker-overlay__active"
+                type="button"
+                onClick={toggleActivePlayer}
+              >
+                Active: {activePlayer}
+              </button>
+            </div>
+            <div className="tracker-overlay__row tracker-overlay__row--stats">
+              <div className="tracker-overlay__stat">
+                <span>A VP</span>
+                <div className="tracker-overlay__controls">
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("A", "vp", -1)}
+                  >
+                    -
+                  </button>
+                  <div>{playerA.vp}</div>
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("A", "vp", 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="tracker-overlay__stat">
+                <span>A CP</span>
+                <div className="tracker-overlay__controls">
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("A", "cp", -1)}
+                  >
+                    -
+                  </button>
+                  <div>{playerA.cp}</div>
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("A", "cp", 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="tracker-overlay__stat">
+                <span>B VP</span>
+                <div className="tracker-overlay__controls">
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("B", "vp", -1)}
+                  >
+                    -
+                  </button>
+                  <div>{playerB.vp}</div>
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("B", "vp", 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div className="tracker-overlay__stat">
+                <span>B CP</span>
+                <div className="tracker-overlay__controls">
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("B", "cp", -1)}
+                  >
+                    -
+                  </button>
+                  <div>{playerB.cp}</div>
+                  <button
+                    type="button"
+                    onClick={() => adjustPlayer("B", "cp", 1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
             <button
-              className="tracker-overlay__active"
+              className="tracker-overlay__toggle"
               type="button"
-              onClick={toggleActivePlayer}
+              onClick={() => setIsTrackerCollapsed(true)}
             >
-              Active: {activePlayer}
+              Collapse
             </button>
           </div>
-          <div className="tracker-overlay__row tracker-overlay__row--stats">
-            <div className="tracker-overlay__stat">
-              <span>A VP</span>
-              <div className="tracker-overlay__controls">
-                <button type="button" onClick={() => adjustPlayer("A", "vp", -1)}>
-                  -
-                </button>
-                <div>{playerA.vp}</div>
-                <button type="button" onClick={() => adjustPlayer("A", "vp", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-            <div className="tracker-overlay__stat">
-              <span>A CP</span>
-              <div className="tracker-overlay__controls">
-                <button type="button" onClick={() => adjustPlayer("A", "cp", -1)}>
-                  -
-                </button>
-                <div>{playerA.cp}</div>
-                <button type="button" onClick={() => adjustPlayer("A", "cp", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-            <div className="tracker-overlay__stat">
-              <span>B VP</span>
-              <div className="tracker-overlay__controls">
-                <button type="button" onClick={() => adjustPlayer("B", "vp", -1)}>
-                  -
-                </button>
-                <div>{playerB.vp}</div>
-                <button type="button" onClick={() => adjustPlayer("B", "vp", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-            <div className="tracker-overlay__stat">
-              <span>B CP</span>
-              <div className="tracker-overlay__controls">
-                <button type="button" onClick={() => adjustPlayer("B", "cp", -1)}>
-                  -
-                </button>
-                <div>{playerB.cp}</div>
-                <button type="button" onClick={() => adjustPlayer("B", "cp", 1)}>
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="side-menu">
-          <div className="side-menu__section">
-            <div className="side-menu__title">Unit</div>
-            <button className="side-menu__button" type="button" onClick={handleAddUnit}>
-              Add Unit
+        )}
+        <div className={`side-menu${isSideMenuCollapsed ? " side-menu--collapsed" : ""}`}>
+          <div className="side-menu__header">
+            <div className="side-menu__title">Tools</div>
+            <button
+              className="side-menu__button side-menu__button--ghost"
+              type="button"
+              onClick={() => setIsSideMenuCollapsed((prev) => !prev)}
+            >
+              {isSideMenuCollapsed ? "Expand" : "Collapse"}
             </button>
-            {selectedUnit && (
-              <>
+          </div>
+          {!isSideMenuCollapsed && (
+            <div className="side-menu__content">
+              <div className="side-menu__section">
+                <button
+                  className="side-menu__section-toggle"
+                  type="button"
+                  onClick={() => toggleSection("unit")}
+                >
+                  Unit
+                </button>
+                {openSections.unit && (
+                  <div className="side-menu__section-body">
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={handleAddUnit}
+                    >
+                      Add Unit
+                    </button>
+                    {selectedUnit && (
+                      <>
                 <button
                   className="side-menu__button"
                   type="button"
@@ -660,346 +744,427 @@ const App = () => {
                 </button>
               </>
             )}
-            <div className="side-menu__row">
-              <button
-                className="side-menu__button side-menu__button--ghost"
-                type="button"
-                onClick={commitPlannedMoves}
-                disabled={!hasPlannedMoves}
-              >
-                Commit
-              </button>
-              <button
-                className="side-menu__button side-menu__button--ghost"
-                type="button"
-                onClick={resetPlannedMoves}
-                disabled={!hasPlannedMoves}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-          <div className="side-menu__section">
-            <div className="side-menu__title">Terrain</div>
-            <button
-              className="side-menu__button"
-              type="button"
-              onClick={handleAddRectTerrain}
-            >
-              Add Rect
-            </button>
-            <button
-              className="side-menu__button"
-              type="button"
-              onClick={handleAddCircleTerrain}
-            >
-              Add Circle
-            </button>
-            {selectedTerrain && (
-              <>
-                <button
-                  className="side-menu__button"
-                  type="button"
-                  onClick={() =>
-                    setIsTerrainInspectorOpen((open) => !open)
-                  }
-                >
-                  {isTerrainInspectorOpen ? "Hide Inspector" : "Inspector"}
-                </button>
-                <button
-                  className="side-menu__button side-menu__button--ghost"
-                  type="button"
-                  onClick={() => duplicateTerrain(selectedTerrain.id)}
-                >
-                  Duplicate
-                </button>
-                <button
-                  className="side-menu__button side-menu__button--ghost"
-                  type="button"
-                  onClick={() => {
-                    deleteTerrain(selectedTerrain.id);
-                    clearSelection();
-                  }}
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
-          <div className="side-menu__section">
-            <div className="side-menu__title">Measure</div>
-            <button className="side-menu__button" type="button" onClick={handleNewMeasurement}>
-              New Measurement
-            </button>
-            {measurements.length > 0 && (
-              <>
-                <button
-                  className="side-menu__button side-menu__button--ghost"
-                  type="button"
-                  onClick={clearMeasurements}
-                >
-                  Clear All
-                </button>
-                <div className="side-menu__list">
-                  {measurements.map((measurement, index) => (
-                    <div key={measurement.id} className="side-menu__list-item">
+                    <div className="side-menu__row">
                       <button
-                        className={
-                          measurement.id === activeMeasurementId
-                            ? "side-menu__link side-menu__link--active"
-                            : "side-menu__link"
-                        }
+                        className="side-menu__button side-menu__button--ghost"
                         type="button"
-                        onClick={() => setActiveMeasurementId(measurement.id)}
+                        onClick={commitPlannedMoves}
+                        disabled={!hasPlannedMoves}
                       >
-                        Measure {index + 1}
+                        Commit
                       </button>
                       <button
-                        className="side-menu__link"
+                        className="side-menu__button side-menu__button--ghost"
                         type="button"
-                        onClick={() => removeMeasurement(measurement.id)}
+                        onClick={resetPlannedMoves}
+                        disabled={!hasPlannedMoves}
                       >
-                        Remove
+                        Reset
                       </button>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="side-menu__section">
-            <div className="side-menu__title">Dice</div>
-            <button className="side-menu__button" type="button" onClick={() => setIsDiceOpen(true)}>
-              Open Dice
-            </button>
-          </div>
-          <div className="side-menu__section">
-            <div className="side-menu__title">Settings</div>
-            <div className="side-menu__field-group">
-              <div className="side-menu__label">Board Size (in)</div>
-              <div className="side-menu__row">
-                <input
-                  className="side-menu__input"
-                  type="text"
-                  inputMode="decimal"
-                  value={boardWidthInput}
-                  onChange={(event) => setBoardWidthInput(event.target.value)}
-                  onBlur={() => {
-                    const nextWidth = finalizeNumericInput(
-                      boardWidthInput,
-                      boardWidthIn,
-                      1
-                    );
-                    setBoardSize(nextWidth, boardHeightIn);
-                    setBoardWidthInput(String(nextWidth));
-                  }}
-                  placeholder="Width"
-                />
-                <input
-                  className="side-menu__input"
-                  type="text"
-                  inputMode="decimal"
-                  value={boardHeightInput}
-                  onChange={(event) => setBoardHeightInput(event.target.value)}
-                  onBlur={() => {
-                    const nextHeight = finalizeNumericInput(
-                      boardHeightInput,
-                      boardHeightIn,
-                      1
-                    );
-                    setBoardSize(boardWidthIn, nextHeight);
-                    setBoardHeightInput(String(nextHeight));
-                  }}
-                  placeholder="Height"
-                />
+                  </div>
+                )}
+              </div>
+              <div className="side-menu__section">
+                <button
+                  className="side-menu__section-toggle"
+                  type="button"
+                  onClick={() => toggleSection("terrain")}
+                >
+                  Terrain
+                </button>
+                {openSections.terrain && (
+                  <div className="side-menu__section-body">
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={handleAddRectTerrain}
+                    >
+                      Add Rect
+                    </button>
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={handleAddCircleTerrain}
+                    >
+                      Add Circle
+                    </button>
+                    {selectedTerrain && (
+                      <>
+                        <button
+                          className="side-menu__button"
+                          type="button"
+                          onClick={() =>
+                            setIsTerrainInspectorOpen((open) => !open)
+                          }
+                        >
+                          {isTerrainInspectorOpen ? "Hide Inspector" : "Inspector"}
+                        </button>
+                        <button
+                          className="side-menu__button side-menu__button--ghost"
+                          type="button"
+                          onClick={() => duplicateTerrain(selectedTerrain.id)}
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          className="side-menu__button side-menu__button--ghost"
+                          type="button"
+                          onClick={() => {
+                            deleteTerrain(selectedTerrain.id);
+                            clearSelection();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="side-menu__section">
+                <button
+                  className="side-menu__section-toggle"
+                  type="button"
+                  onClick={() => toggleSection("measure")}
+                >
+                  Measure
+                </button>
+                {openSections.measure && (
+                  <div className="side-menu__section-body">
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={handleNewMeasurement}
+                    >
+                      New Measurement
+                    </button>
+                    {measurements.length > 0 && (
+                      <>
+                        <button
+                          className="side-menu__button side-menu__button--ghost"
+                          type="button"
+                          onClick={clearMeasurements}
+                        >
+                          Clear All
+                        </button>
+                        <div className="side-menu__list">
+                          {measurements.map((measurement, index) => (
+                            <div
+                              key={measurement.id}
+                              className="side-menu__list-item"
+                            >
+                              <button
+                                className={
+                                  measurement.id === activeMeasurementId
+                                    ? "side-menu__link side-menu__link--active"
+                                    : "side-menu__link"
+                                }
+                                type="button"
+                                onClick={() =>
+                                  setActiveMeasurementId(measurement.id)
+                                }
+                              >
+                                Measure {index + 1}
+                              </button>
+                              <button
+                                className="side-menu__link"
+                                type="button"
+                                onClick={() => removeMeasurement(measurement.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="side-menu__section">
+                <button
+                  className="side-menu__section-toggle"
+                  type="button"
+                  onClick={() => toggleSection("dice")}
+                >
+                  Dice
+                </button>
+                {openSections.dice && (
+                  <div className="side-menu__section-body">
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={() => setIsDiceOpen(true)}
+                    >
+                      Open Dice
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="side-menu__section">
+                <button
+                  className="side-menu__section-toggle"
+                  type="button"
+                  onClick={() => toggleSection("settings")}
+                >
+                  Settings
+                </button>
+                {openSections.settings && (
+                  <div className="side-menu__section-body">
+                    <div className="side-menu__field-group">
+                      <div className="side-menu__label">Board Size (in)</div>
+                      <div className="side-menu__row">
+                        <input
+                          className="side-menu__input"
+                          type="text"
+                          inputMode="decimal"
+                          value={boardWidthInput}
+                          onChange={(event) =>
+                            setBoardWidthInput(event.target.value)
+                          }
+                          onBlur={() => {
+                            const nextWidth = finalizeNumericInput(
+                              boardWidthInput,
+                              boardWidthIn,
+                              1
+                            );
+                            setBoardSize(nextWidth, boardHeightIn);
+                            setBoardWidthInput(String(nextWidth));
+                          }}
+                          placeholder="Width"
+                        />
+                        <input
+                          className="side-menu__input"
+                          type="text"
+                          inputMode="decimal"
+                          value={boardHeightInput}
+                          onChange={(event) =>
+                            setBoardHeightInput(event.target.value)
+                          }
+                          onBlur={() => {
+                            const nextHeight = finalizeNumericInput(
+                              boardHeightInput,
+                              boardHeightIn,
+                              1
+                            );
+                            setBoardSize(boardWidthIn, nextHeight);
+                            setBoardHeightInput(String(nextHeight));
+                          }}
+                          placeholder="Height"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      className="side-menu__button"
+                      type="button"
+                      onClick={toggleGrid}
+                    >
+                      {showGrid ? "Grid On" : "Grid Off"}
+                    </button>
+                    <button
+                      className="side-menu__button side-menu__button--ghost"
+                      type="button"
+                      onClick={handleSelectBackground}
+                    >
+                      {backgroundImageUrl ? "Replace Background" : "Add Background"}
+                    </button>
+                    {backgroundImageUrl && (
+                      <>
+                        <button
+                          className="side-menu__button side-menu__button--ghost"
+                          type="button"
+                          onClick={handleClearBackground}
+                        >
+                          Remove Background
+                        </button>
+                        <div className="side-menu__field-group">
+                          <div className="side-menu__label">Background Fit</div>
+                          <select
+                            className="side-menu__select"
+                            value={backgroundFit}
+                            onChange={(event) =>
+                              setBackgroundFit(
+                                event.target.value as "contain" | "cover"
+                              )
+                            }
+                          >
+                            <option value="contain">Contain</option>
+                            <option value="cover">Cover</option>
+                          </select>
+                        </div>
+                        <div className="side-menu__field-group">
+                          <div className="side-menu__label">Background Scale</div>
+                          <input
+                            className="side-menu__input"
+                            type="text"
+                            inputMode="decimal"
+                            value={backgroundScaleInput}
+                            onChange={(event) =>
+                              setBackgroundScaleInput(event.target.value)
+                            }
+                            onBlur={() => {
+                              const nextScale = finalizeNumericInput(
+                                backgroundScaleInput,
+                                backgroundScale,
+                                0.25
+                              );
+                              setBackgroundScale(nextScale);
+                              setBackgroundScaleInput(String(nextScale));
+                            }}
+                          />
+                        </div>
+                        <div className="side-menu__field-group">
+                          <div className="side-menu__label">
+                            Background Offset (in)
+                          </div>
+                          <div className="side-menu__row">
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={backgroundOffsetXInput}
+                              onChange={(event) =>
+                                setBackgroundOffsetXInput(event.target.value)
+                              }
+                              onBlur={() => {
+                                const nextX = finalizeNumericInput(
+                                  backgroundOffsetXInput,
+                                  backgroundOffset.x,
+                                  -9999
+                                );
+                                setBackgroundOffset({
+                                  x: nextX,
+                                  y: backgroundOffset.y,
+                                });
+                                setBackgroundOffsetXInput(String(nextX));
+                              }}
+                              placeholder="X"
+                            />
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={backgroundOffsetYInput}
+                              onChange={(event) =>
+                                setBackgroundOffsetYInput(event.target.value)
+                              }
+                              onBlur={() => {
+                                const nextY = finalizeNumericInput(
+                                  backgroundOffsetYInput,
+                                  backgroundOffset.y,
+                                  -9999
+                                );
+                                setBackgroundOffset({
+                                  x: backgroundOffset.x,
+                                  y: nextY,
+                                });
+                                setBackgroundOffsetYInput(String(nextY));
+                              }}
+                              placeholder="Y"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                    <div className="side-menu__field-group">
+                      <button
+                        className="side-menu__button"
+                        type="button"
+                        onClick={toggleDeploymentZones}
+                      >
+                        {showDeploymentZones ? "Hide Deployment" : "Show Deployment"}
+                      </button>
+                    </div>
+                    {showDeploymentZones &&
+                      deploymentZones.map((zone) => (
+                        <div key={zone.id} className="side-menu__field-group">
+                          <div className="side-menu__label">{zone.label}</div>
+                          <div className="side-menu__row">
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={zone.x}
+                              onChange={(event) =>
+                                updateDeploymentZone(zone.id, {
+                                  x: Number(event.target.value) || 0,
+                                })
+                              }
+                              placeholder="X"
+                            />
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={zone.y}
+                              onChange={(event) =>
+                                updateDeploymentZone(zone.id, {
+                                  y: Number(event.target.value) || 0,
+                                })
+                              }
+                              placeholder="Y"
+                            />
+                          </div>
+                          <div className="side-menu__row">
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={zone.width}
+                              onChange={(event) =>
+                                updateDeploymentZone(zone.id, {
+                                  width: Math.max(
+                                    0.5,
+                                    Number(event.target.value) || 0
+                                  ),
+                                })
+                              }
+                              placeholder="W"
+                            />
+                            <input
+                              className="side-menu__input"
+                              type="text"
+                              inputMode="decimal"
+                              value={zone.height}
+                              onChange={(event) =>
+                                updateDeploymentZone(zone.id, {
+                                  height: Math.max(
+                                    0.5,
+                                    Number(event.target.value) || 0
+                                  ),
+                                })
+                              }
+                              placeholder="H"
+                            />
+                          </div>
+                          <div className="side-menu__row side-menu__row--colors">
+                            {colorPresets.map((color) => (
+                              <button
+                                key={`${zone.id}-${color}`}
+                                className="color-swatch"
+                                type="button"
+                                style={{ backgroundColor: color }}
+                                onClick={() =>
+                                  updateDeploymentZone(zone.id, { color })
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    <button
+                      className="side-menu__button side-menu__button--ghost"
+                      type="button"
+                      onClick={handleOpenScenes}
+                    >
+                      Scenes
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            <button className="side-menu__button" type="button" onClick={toggleGrid}>
-              {showGrid ? "Grid On" : "Grid Off"}
-            </button>
-            <button
-              className="side-menu__button side-menu__button--ghost"
-              type="button"
-              onClick={handleSelectBackground}
-            >
-              {backgroundImageUrl ? "Replace Background" : "Add Background"}
-            </button>
-            {backgroundImageUrl && (
-              <>
-                <button
-                  className="side-menu__button side-menu__button--ghost"
-                  type="button"
-                  onClick={handleClearBackground}
-                >
-                  Remove Background
-                </button>
-                <div className="side-menu__field-group">
-                  <div className="side-menu__label">Background Fit</div>
-                  <select
-                    className="side-menu__select"
-                    value={backgroundFit}
-                    onChange={(event) =>
-                      setBackgroundFit(event.target.value as "contain" | "cover")
-                    }
-                  >
-                    <option value="contain">Contain</option>
-                    <option value="cover">Cover</option>
-                  </select>
-                </div>
-                <div className="side-menu__field-group">
-                  <div className="side-menu__label">Background Scale</div>
-                  <input
-                    className="side-menu__input"
-                    type="text"
-                    inputMode="decimal"
-                    value={backgroundScaleInput}
-                    onChange={(event) =>
-                      setBackgroundScaleInput(event.target.value)
-                    }
-                    onBlur={() => {
-                      const nextScale = finalizeNumericInput(
-                        backgroundScaleInput,
-                        backgroundScale,
-                        0.25
-                      );
-                      setBackgroundScale(nextScale);
-                      setBackgroundScaleInput(String(nextScale));
-                    }}
-                  />
-                </div>
-                <div className="side-menu__field-group">
-                  <div className="side-menu__label">Background Offset (in)</div>
-                  <div className="side-menu__row">
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={backgroundOffsetXInput}
-                      onChange={(event) =>
-                        setBackgroundOffsetXInput(event.target.value)
-                      }
-                      onBlur={() => {
-                        const nextX = finalizeNumericInput(
-                          backgroundOffsetXInput,
-                          backgroundOffset.x,
-                          -9999
-                        );
-                        setBackgroundOffset({ x: nextX, y: backgroundOffset.y });
-                        setBackgroundOffsetXInput(String(nextX));
-                      }}
-                      placeholder="X"
-                    />
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={backgroundOffsetYInput}
-                      onChange={(event) =>
-                        setBackgroundOffsetYInput(event.target.value)
-                      }
-                      onBlur={() => {
-                        const nextY = finalizeNumericInput(
-                          backgroundOffsetYInput,
-                          backgroundOffset.y,
-                          -9999
-                        );
-                        setBackgroundOffset({ x: backgroundOffset.x, y: nextY });
-                        setBackgroundOffsetYInput(String(nextY));
-                      }}
-                      placeholder="Y"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            <div className="side-menu__field-group">
-              <button
-                className="side-menu__button"
-                type="button"
-                onClick={toggleDeploymentZones}
-              >
-                {showDeploymentZones ? "Hide Deployment" : "Show Deployment"}
-              </button>
-            </div>
-            {showDeploymentZones &&
-              deploymentZones.map((zone) => (
-                <div key={zone.id} className="side-menu__field-group">
-                  <div className="side-menu__label">{zone.label}</div>
-                  <div className="side-menu__row">
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={zone.x}
-                      onChange={(event) =>
-                        updateDeploymentZone(zone.id, {
-                          x: Number(event.target.value) || 0,
-                        })
-                      }
-                      placeholder="X"
-                    />
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={zone.y}
-                      onChange={(event) =>
-                        updateDeploymentZone(zone.id, {
-                          y: Number(event.target.value) || 0,
-                        })
-                      }
-                      placeholder="Y"
-                    />
-                  </div>
-                  <div className="side-menu__row">
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={zone.width}
-                      onChange={(event) =>
-                        updateDeploymentZone(zone.id, {
-                          width: Math.max(0.5, Number(event.target.value) || 0),
-                        })
-                      }
-                      placeholder="W"
-                    />
-                    <input
-                      className="side-menu__input"
-                      type="text"
-                      inputMode="decimal"
-                      value={zone.height}
-                      onChange={(event) =>
-                        updateDeploymentZone(zone.id, {
-                          height: Math.max(0.5, Number(event.target.value) || 0),
-                        })
-                      }
-                      placeholder="H"
-                    />
-                  </div>
-                  <div className="side-menu__row side-menu__row--colors">
-                    {colorPresets.map((color) => (
-                      <button
-                        key={`${zone.id}-${color}`}
-                        className="color-swatch"
-                        type="button"
-                        style={{ backgroundColor: color }}
-                        onClick={() =>
-                          updateDeploymentZone(zone.id, { color })
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            <button
-              className="side-menu__button side-menu__button--ghost"
-              type="button"
-              onClick={handleOpenScenes}
-            >
-              Scenes
-            </button>
-          </div>
+          )}
         </div>
       </main>
       {selectedUnit && unitInspectorOpen && (
