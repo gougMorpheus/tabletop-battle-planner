@@ -70,7 +70,7 @@ const buildDefaultUnit = (index: number, draft?: UnitDraft): Unit => {
   };
 };
 
-export const useUnitsStore = create<UnitsState>((set, get) => ({
+export const useUnitsStore = create<UnitsState>((set) => ({
   units: [],
   addUnit: (draft) =>
     set((state) => {

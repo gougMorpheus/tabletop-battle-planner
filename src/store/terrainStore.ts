@@ -30,8 +30,19 @@ type TerrainState = {
   duplicateTerrain: (terrainId: string) => void;
   deleteTerrain: (terrainId: string) => void;
   setTerrainPosition: (terrainId: string, x: number, y: number) => void;
-  updateTerrain: (terrainId: string, updates: Partial<Terrain>) => void;
+  updateTerrain: (terrainId: string, updates: TerrainUpdates) => void;
   setTerrains: (terrains: Terrain[]) => void;
+};
+
+type TerrainUpdates = {
+  x?: number;
+  y?: number;
+  rotation?: number;
+  label?: string;
+  color?: string;
+  widthInches?: number;
+  heightInches?: number;
+  radiusInches?: number;
 };
 
 const createDefaultTerrain = (draft: TerrainDraft): Terrain => {
@@ -105,7 +116,37 @@ export const useTerrainStore = create<TerrainState>((set) => ({
   updateTerrain: (terrainId, updates) =>
     set((state) => ({
       terrains: state.terrains.map((terrain) =>
-        terrain.id === terrainId ? { ...terrain, ...updates } : terrain
+        terrain.id === terrainId
+          ? terrain.type === "circle"
+            ? {
+                ...terrain,
+                x: updates.x ?? terrain.x,
+                y: updates.y ?? terrain.y,
+                rotation: updates.rotation ?? terrain.rotation,
+                label: updates.label ?? terrain.label,
+                color: updates.color ?? terrain.color,
+                radiusInches:
+                  typeof updates.radiusInches === "number"
+                    ? updates.radiusInches
+                    : terrain.radiusInches,
+              }
+            : {
+                ...terrain,
+                x: updates.x ?? terrain.x,
+                y: updates.y ?? terrain.y,
+                rotation: updates.rotation ?? terrain.rotation,
+                label: updates.label ?? terrain.label,
+                color: updates.color ?? terrain.color,
+                widthInches:
+                  typeof updates.widthInches === "number"
+                    ? updates.widthInches
+                    : terrain.widthInches,
+                heightInches:
+                  typeof updates.heightInches === "number"
+                    ? updates.heightInches
+                    : terrain.heightInches,
+              }
+          : terrain
       ),
     })),
   setTerrains: (terrains) => set({ terrains }),

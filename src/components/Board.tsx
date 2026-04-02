@@ -13,7 +13,7 @@ import {
 } from "react-konva";
 import Konva from "konva";
 import { useBoardStore } from "../store/boardStore";
-import { useUnitsStore } from "../store/unitsStore";
+import { Unit, useUnitsStore } from "../store/unitsStore";
 import { useMeasurementStore } from "../store/measurementStore";
 import { useTerrainStore } from "../store/terrainStore";
 import { useSelectionStore } from "../store/selectionStore";
@@ -65,15 +65,31 @@ const buildWoundSummary = (wounds: number[]) => {
 const clampScale = (scale: number) =>
   Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 
-const getTouchDistance = (touches: TouchList) => {
-  const [first, second] = [touches[0], touches[1]];
+const getTouchDistance = (touches: TouchList): number | null => {
+  if (touches.length < 2) {
+    return null;
+  }
+  const first = touches[0];
+  const second = touches[1];
+  if (!first || !second) {
+    return null;
+  }
   const dx = first.clientX - second.clientX;
   const dy = first.clientY - second.clientY;
   return Math.hypot(dx, dy);
 };
 
-const getTouchCenter = (touches: TouchList) => {
-  const [first, second] = [touches[0], touches[1]];
+const getTouchCenter = (
+  touches: TouchList
+): { x: number; y: number } | null => {
+  if (touches.length < 2) {
+    return null;
+  }
+  const first = touches[0];
+  const second = touches[1];
+  if (!first || !second) {
+    return null;
+  }
   return {
     x: (first.clientX + second.clientX) / 2,
     y: (first.clientY + second.clientY) / 2,
@@ -84,6 +100,12 @@ type DragState = {
   unitId: string;
   origin: { x: number; y: number };
   current: { x: number; y: number };
+};
+
+type SnapResult = {
+  unit: Unit;
+  distance: number;
+  anchor: { x: number; y: number };
 };
 
 const Board = () => {
@@ -227,8 +249,13 @@ const Board = () => {
     if (touches.length === 2) {
       setIsPinching(true);
       stageRef.current?.draggable(false);
-      lastCenterRef.current = getTouchCenter(touches);
-      lastDistanceRef.current = getTouchDistance(touches);
+      const center = getTouchCenter(touches);
+      const distance = getTouchDistance(touches);
+      if (!center || distance === null) {
+        return;
+      }
+      lastCenterRef.current = center;
+      lastDistanceRef.current = distance;
       return;
     }
 
@@ -252,6 +279,9 @@ const Board = () => {
     event.evt.preventDefault();
     const center = getTouchCenter(touches);
     const distance = getTouchDistance(touches);
+    if (!center || distance === null) {
+      return;
+    }
 
     if (!lastCenterRef.current || !lastDistanceRef.current) {
       lastCenterRef.current = center;
@@ -334,10 +364,8 @@ const Board = () => {
     return lines;
   }, [boardHeightPx, boardWidthPx, heightIn, showGrid, widthIn]);
 
-  const findSnapUnit = (point: { x: number; y: number }) => {
-    let closest:
-      | { unit: (typeof units)[number]; distance: number; anchor: { x: number; y: number } }
-      | null = null;
+  const findSnapUnit = (point: { x: number; y: number }): SnapResult | null => {
+    let closest: SnapResult | null = null;
     units.forEach((unit) => {
       const radius = unit.iconDiameterInches / 2;
       const anchors = [
