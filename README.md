@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿# Tabletop Battle Planner
 
 Mobile-first PWA for planning tabletop battles on a 2D board. This is a tactical planning and tracking tool only — no rules engine, no LOS, no combat logic.
@@ -31,3 +32,6 @@ npm run dev
 ## License
 
 Private project.
+=======
+# tabletop-battle-planner
+>>>>>>> e6939825315341552c2eaa121307522ef8fbbe64
