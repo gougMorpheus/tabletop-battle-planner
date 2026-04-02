@@ -106,6 +106,7 @@ const App = () => {
   const [unitNameInput, setUnitNameInput] = useState("");
   const [unitInitialsInput, setUnitInitialsInput] = useState("");
   const [unitColorInput, setUnitColorInput] = useState("");
+  const [unitNotesInput, setUnitNotesInput] = useState("");
   const [boardWidthInput, setBoardWidthInput] = useState("");
   const [boardHeightInput, setBoardHeightInput] = useState("");
   const [backgroundScaleInput, setBackgroundScaleInput] = useState("");
@@ -238,6 +239,38 @@ const App = () => {
     const list = await listScenes();
     setScenes(list);
     setLoadingScenes(false);
+  };
+
+  const handleNewScene = () => {
+    const defaultBoard = {
+      widthIn: 60,
+      heightIn: 44,
+      scale: 1,
+      position: { x: 0, y: 0 },
+      showGrid: true,
+      backgroundImageUrl: null,
+      backgroundFit: "contain" as const,
+      backgroundScale: 1,
+      backgroundOffset: { x: 0, y: 0 },
+      showDeploymentZones: false,
+      deploymentZones: [],
+    };
+    setBoardConfig(defaultBoard);
+    setUnits([]);
+    setTerrains([]);
+    setMeasurements([]);
+    setTrackerState({
+      playerA: { vp: 0, cp: 0 },
+      playerB: { vp: 0, cp: 0 },
+      battleRound: 1,
+      activePlayer: "A",
+      phase: "Command",
+    });
+    clearSelection();
+    setUnitInspectorOpen(false);
+    setIsTerrainInspectorOpen(false);
+    setSceneNameInput("New Scene");
+    handleClearBackground();
   };
 
   useEffect(() => {
@@ -415,6 +448,7 @@ const App = () => {
       setUnitNameInput("");
       setUnitInitialsInput("");
       setUnitColorInput("");
+      setUnitNotesInput("");
       return;
     }
     setModelCountInput(String(selectedUnit.modelCount));
@@ -424,6 +458,7 @@ const App = () => {
     setUnitNameInput(selectedUnit.name);
     setUnitInitialsInput(selectedUnit.initials);
     setUnitColorInput(selectedUnit.color);
+    setUnitNotesInput(selectedUnit.notes ?? "");
   }, [selectedUnit]);
 
   useEffect(() => {
@@ -451,6 +486,7 @@ const App = () => {
     : null;
 
   const colorPresets = ["#b83b3b", "#3b7db8", "#4f9d69", "#6d6f73"];
+  const formatDecimal = (value: number) => value.toFixed(1);
 
   return (
     <div className="app">
@@ -596,7 +632,7 @@ const App = () => {
                         key={`${selectedUnit.id}-range-${index}`}
                         className="side-menu__list-item"
                       >
-                        <span>{range}"</span>
+                        <span>{formatDecimal(range)}"</span>
                         <button
                           className="side-menu__link"
                           type="button"
@@ -695,39 +731,40 @@ const App = () => {
             <button className="side-menu__button" type="button" onClick={handleNewMeasurement}>
               New Measurement
             </button>
-            <button
-              className="side-menu__button side-menu__button--ghost"
-              type="button"
-              onClick={clearMeasurements}
-              disabled={measurements.length === 0}
-            >
-              Clear All
-            </button>
             {measurements.length > 0 && (
-              <div className="side-menu__list">
-                {measurements.map((measurement, index) => (
-                  <div key={measurement.id} className="side-menu__list-item">
-                    <button
-                      className={
-                        measurement.id === activeMeasurementId
-                          ? "side-menu__link side-menu__link--active"
-                          : "side-menu__link"
-                      }
-                      type="button"
-                      onClick={() => setActiveMeasurementId(measurement.id)}
-                    >
-                      Measure {index + 1}
-                    </button>
-                    <button
-                      className="side-menu__link"
-                      type="button"
-                      onClick={() => removeMeasurement(measurement.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <>
+                <button
+                  className="side-menu__button side-menu__button--ghost"
+                  type="button"
+                  onClick={clearMeasurements}
+                >
+                  Clear All
+                </button>
+                <div className="side-menu__list">
+                  {measurements.map((measurement, index) => (
+                    <div key={measurement.id} className="side-menu__list-item">
+                      <button
+                        className={
+                          measurement.id === activeMeasurementId
+                            ? "side-menu__link side-menu__link--active"
+                            : "side-menu__link"
+                        }
+                        type="button"
+                        onClick={() => setActiveMeasurementId(measurement.id)}
+                      >
+                        Measure {index + 1}
+                      </button>
+                      <button
+                        className="side-menu__link"
+                        type="button"
+                        onClick={() => removeMeasurement(measurement.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
           <div className="side-menu__section">
@@ -1098,6 +1135,15 @@ const App = () => {
               <div>Dead: {derivedStats?.dead ?? 0}</div>
               <div>Wounds Remaining: {derivedStats?.remaining ?? 0}</div>
             </div>
+            <label className="inspector__field">
+              <span>Notes</span>
+              <textarea
+                rows={3}
+                value={unitNotesInput}
+                onChange={(event) => setUnitNotesInput(event.target.value)}
+                onBlur={() => handleUnitUpdate({ notes: unitNotesInput })}
+              />
+            </label>
             <div className="inspector__wounds">
               {selectedUnit.currentModelWounds.map((wounds, index) => (
                 <label className="inspector__wound" key={index}>
@@ -1284,13 +1330,22 @@ const App = () => {
           <div className="scenes__modal">
             <div className="scenes__header">
               <div className="scenes__title">Scenes</div>
-              <button
-                className="scenes__button scenes__button--ghost"
-                type="button"
-                onClick={() => setIsScenesOpen(false)}
-              >
-                Close
-              </button>
+              <div className="scenes__actions">
+                <button
+                  className="scenes__button"
+                  type="button"
+                  onClick={handleNewScene}
+                >
+                  New Scene
+                </button>
+                <button
+                  className="scenes__button scenes__button--ghost"
+                  type="button"
+                  onClick={() => setIsScenesOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <div className="scenes__content">
               <div className="scenes__row">

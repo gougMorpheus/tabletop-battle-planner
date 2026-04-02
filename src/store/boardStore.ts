@@ -54,6 +54,30 @@ export type BoardState = {
   }) => void;
 };
 
+const buildDefaultDeploymentZones = (widthIn: number, heightIn: number) => {
+  const depth = Math.min(12, widthIn / 2);
+  return [
+    {
+      id: "A",
+      label: "Player A",
+      x: 0,
+      y: 0,
+      width: depth,
+      height: heightIn,
+      color: "#b83b3b",
+    },
+    {
+      id: "B",
+      label: "Player B",
+      x: widthIn - depth,
+      y: 0,
+      width: depth,
+      height: heightIn,
+      color: "#3b7db8",
+    },
+  ];
+};
+
 export const useBoardStore = create<BoardState>((set) => ({
   widthIn: 60,
   heightIn: 44,
@@ -65,26 +89,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   backgroundScale: 1,
   backgroundOffset: { x: 0, y: 0 },
   showDeploymentZones: false,
-  deploymentZones: [
-    {
-      id: "A",
-      label: "Player A",
-      x: 0,
-      y: 0,
-      width: 12,
-      height: 44,
-      color: "#b83b3b",
-    },
-    {
-      id: "B",
-      label: "Player B",
-      x: 48,
-      y: 0,
-      width: 12,
-      height: 44,
-      color: "#3b7db8",
-    },
-  ],
+  deploymentZones: buildDefaultDeploymentZones(60, 44),
   setView: (scale, position) => set({ scale, position }),
   setPosition: (position) => set({ position }),
   setScale: (scale) => set({ scale }),
@@ -108,7 +113,19 @@ export const useBoardStore = create<BoardState>((set) => ({
       return { widthIn: nextWidth, heightIn: nextHeight, deploymentZones };
     }),
   toggleDeploymentZones: () =>
-    set((state) => ({ showDeploymentZones: !state.showDeploymentZones })),
+    set((state) => {
+      const nextShow = !state.showDeploymentZones;
+      if (nextShow && state.deploymentZones.length === 0) {
+        return {
+          showDeploymentZones: nextShow,
+          deploymentZones: buildDefaultDeploymentZones(
+            state.widthIn,
+            state.heightIn
+          ),
+        };
+      }
+      return { showDeploymentZones: nextShow };
+    }),
   updateDeploymentZone: (id, updates) =>
     set((state) => ({
       deploymentZones: state.deploymentZones.map((zone) =>

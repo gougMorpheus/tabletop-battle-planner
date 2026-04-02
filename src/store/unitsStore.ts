@@ -14,6 +14,7 @@ export type Unit = {
   iconDiameterInches: number;
   color: string;
   ranges: number[];
+  notes: string;
 };
 
 type UnitDraft = Partial<Omit<Unit, "id">> & { x?: number; y?: number };
@@ -65,6 +66,7 @@ const buildDefaultUnit = (index: number, draft?: UnitDraft): Unit => {
     iconDiameterInches: draft?.iconDiameterInches ?? 1.6,
     color: draft?.color ?? "#d46b41",
     ranges: [],
+    notes: draft?.notes ?? "",
   };
 };
 
