@@ -126,18 +126,26 @@ export const useDiceStore = create<DiceState>((set) => ({
       if (!followUp) {
         return { sections: nextSections };
       }
+      const baseSection = nextSections[index];
+      if (!baseSection) {
+        return { sections: nextSections };
+      }
       let successCount = countSuccesses(
-        nextSections[index].results,
-        nextSections[index].target
+        baseSection.results,
+        baseSection.target
       );
       for (let idx = index + 1; idx < nextSections.length; idx += 1) {
-        const target = nextSections[idx].target;
+        const currentSection = nextSections[idx];
+        if (!currentSection) {
+          break;
+        }
+        const target = currentSection.target;
         if (target === null) {
           break;
         }
         const results = rollDice(Math.max(0, Math.floor(successCount)));
         nextSections[idx] = {
-          ...nextSections[idx],
+          ...currentSection,
           results,
           error: null,
           lastRolledCount: results.length,
