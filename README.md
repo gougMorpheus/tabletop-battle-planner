@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 ﻿# Tabletop Battle Planner
 
 Mobile-first PWA for planning tabletop battles on a 2D board. This is a tactical planning and tracking tool only — no rules engine, no LOS, no combat logic.
@@ -35,3 +36,30 @@ Private project.
 =======
 # tabletop-battle-planner
 >>>>>>> e6939825315341552c2eaa121307522ef8fbbe64
+=======
+# Tabletop Battle Planner
+
+A mobile-first PWA for planning and simulating tabletop battles on a 2D board.
+
+## Features
+
+- 2D board with real-world dimensions
+- Draggable unit icons
+- Measurement tools
+- Range visualization
+- Abstract terrain elements
+- Per-model wound tracking
+- Fullscreen dice roller
+- Game tracker
+- Local scene save/load
+
+## Tech Stack
+
+- React
+- TypeScript
+- Vite
+- Konva
+- Zustand
+- IndexedDB
+- PWA
+>>>>>>> bcb45064ffbc869621d7ccded3e80a64fe605e46
