@@ -119,6 +119,7 @@ const App = () => {
   const [sceneNameInput, setSceneNameInput] = useState("");
   const [scenes, setScenes] = useState<SceneRecord[]>([]);
   const [loadingScenes, setLoadingScenes] = useState(false);
+  const [isFollowUpMode, setIsFollowUpMode] = useState(false);
   const [isSideMenuCollapsed, setIsSideMenuCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     unit: true,
@@ -131,7 +132,9 @@ const App = () => {
   const diceSections = useDiceStore((state) => state.sections);
   const setDiceCountInput = useDiceStore((state) => state.setCountInput);
   const setDiceTarget = useDiceStore((state) => state.setTarget);
-  const rollSection = useDiceStore((state) => state.rollSection);
+  const rollSectionWithFollowUp = useDiceStore(
+    (state) => state.rollSectionWithFollowUp
+  );
   const resetAllDice = useDiceStore((state) => state.resetAll);
   const playerA = useGameTrackerStore((state) => state.playerA);
   const playerB = useGameTrackerStore((state) => state.playerB);
@@ -1576,6 +1579,13 @@ const App = () => {
               <div className="dice__title">Dice Roller</div>
               <div className="dice__actions">
               <button
+                className="dice__button dice__button--ghost"
+                type="button"
+                onClick={() => setIsFollowUpMode((prev) => !prev)}
+              >
+                Follow-up: {isFollowUpMode ? "On" : "Off"}
+              </button>
+              <button
                 className="dice__button"
                 type="button"
                 onClick={resetAllDice}
@@ -1603,6 +1613,7 @@ const App = () => {
                   section.target !== null
                     ? section.results.filter((value) => value >= section.target!).length
                     : null;
+                const rolledCount = section.lastRolledCount;
                 return (
                   <div key={index} className="dice__section">
                     <div className="dice__section-header">
@@ -1612,7 +1623,7 @@ const App = () => {
                       <button
                         className="dice__button"
                         type="button"
-                        onClick={() => rollSection(index)}
+                        onClick={() => rollSectionWithFollowUp(index, isFollowUpMode)}
                       >
                         Roll
                       </button>
@@ -1658,7 +1669,7 @@ const App = () => {
                       <div>Sum: {sum}</div>
                       {section.target !== null && (
                         <div>
-                          Successes: {successes ?? 0} ({"\u2265"}
+                          Successes: {successes ?? 0}/{rolledCount} ({"\u2265"}
                           {section.target})
                         </div>
                       )}
